@@ -5,6 +5,11 @@ const TrackerSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  interest: {
+    type: String,
+    enum: ["buy", "sell", "both"],
+    default: "buy"
+  },
   targetDown: {
     type: Number,
     default: null

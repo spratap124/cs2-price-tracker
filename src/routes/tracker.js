@@ -12,6 +12,7 @@ router.post("/", async (req, res) => {
   try {
     const {
       skinName,
+      interest,
       targetDown,
       targetUp
     } = req.body;
@@ -42,6 +43,7 @@ router.post("/", async (req, res) => {
 
     const tracker = await Tracker.create({
       skinName,
+      interest: interest != null ? interest : "buy",
       targetDown: targetDown != null ? targetDown : null,
       targetUp: targetUp != null ? targetUp : null,
       lastKnownPrice: currentPrice,
@@ -71,12 +73,43 @@ router.get("/", async (req, res) => {
   res.json(trackers);
 });
 
-// Delete tracker
-router.delete("/:id", async (req, res) => {
-  await Tracker.findByIdAndDelete(req.params.id);
-  res.json({
-    success: true
-  });
+// Delete tracker(s)
+// Supports: DELETE /track/:id (single ID in URL)
+//          DELETE /track with body: { ids: ["id1", "id2", ...] } (multiple IDs)
+router.delete("/:id?", async (req, res) => {
+  try {
+    const ids = req.body.ids;
+
+    if (ids && Array.isArray(ids) && ids.length > 0) {
+      // Delete multiple trackers by IDs from request body
+      const result = await Tracker.deleteMany({
+        _id: {
+          $in: ids
+        }
+      });
+      res.json({
+        success: true,
+        deletedCount: result.deletedCount
+      });
+    } else if (req.params.id) {
+      // Delete single tracker by ID from URL parameter
+      await Tracker.findByIdAndDelete(req.params.id);
+      res.json({
+        success: true
+      });
+    } else {
+      res.status(400);
+      res.json({
+        error: "Either provide an ID in the URL or an array of IDs in the request body"
+      });
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500);
+    res.json({
+      error: "internal error"
+    });
+  }
 });
 
 export default router;

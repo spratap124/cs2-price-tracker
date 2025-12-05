@@ -16,7 +16,7 @@
         }],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"skinName\": \"AK-47 | Redline (Field-Tested)\",\n  \"targetDown\": 1800,\n  \"targetUp\": 2500\n}",
+          "raw": "{\n  \"skinName\": \"AK-47 | Redline (Field-Tested)\",\n  \"interest\": \"buy\",\n  \"targetDown\": 1800,\n  \"targetUp\": 2500\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -32,7 +32,7 @@
             "track"
           ]
         },
-        "description": "Create a new price tracker for a CS2 skin. The system will attempt to fetch the current price immediately."
+        "description": "Create a new price tracker for a CS2 skin. The system will attempt to fetch the current price and image URL immediately.\n\n**Parameters:**\n- `skinName` (required): Full name of the CS2 skin\n- `interest` (optional): User's interest - \"buy\", \"sell\", or \"both\" (default: \"buy\")\n- `targetDown` (optional): Price threshold for buying alerts (price drops below this)\n- `targetUp` (optional): Price threshold for selling alerts (price rises above this)"
       },
       "response": []
     },
@@ -55,7 +55,7 @@
       "response": []
     },
     {
-      "name": "Delete Tracker",
+      "name": "Delete Tracker (Single)",
       "request": {
         "method": "DELETE",
         "header": [],
@@ -74,7 +74,38 @@
             "description": "MongoDB ObjectId of the tracker to delete"
           }]
         },
-        "description": "Delete a price tracker by its ID."
+        "description": "Delete a single price tracker by its ID from the URL parameter."
+      },
+      "response": []
+    },
+    {
+      "name": "Delete Trackers (Multiple)",
+      "request": {
+        "method": "DELETE",
+        "header": [{
+          "key": "Content-Type",
+          "value": "application/json",
+          "type": "text"
+        }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"ids\": [\n    \"tracker_id_1\",\n    \"tracker_id_2\",\n    \"tracker_id_3\"\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/track",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "track"
+          ]
+        },
+        "description": "Delete multiple price trackers by providing an array of IDs in the request body. Returns the count of deleted trackers."
       },
       "response": []
     }
