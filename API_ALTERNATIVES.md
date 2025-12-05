@@ -38,6 +38,15 @@ Unfortunately, **truly free APIs without rate limits for CS2 prices don't exist*
 
 ### 2. **Third-Party Market APIs**
 
+#### **Skinport API** ⭐ Recommended
+- **Website**: https://skinport.com
+- **Documentation**: https://docs.skinport.com
+- **Rate Limit**: 8 requests per 5 minutes (documented, structured)
+- **Cost**: Free with API key
+- **Pros**: Official API, better reliability than Steam, clean JSON responses
+- **Cons**: Different prices than Steam Market, requires account + API key
+- **See**: [SKINPORT_API.md](SKINPORT_API.md) for detailed integration guide
+
 #### CSFloat Market API
 - **Website**: https://csfloat.com/
 - **Rate Limit**: Has rate limits, but may be more generous

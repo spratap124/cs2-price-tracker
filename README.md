@@ -68,10 +68,31 @@ The application includes built-in rate limiting with:
 If you're still experiencing 429 (rate limit) errors:
 1. Increase `STEAM_API_MIN_INTERVAL_MS` to 10000 (10 seconds) or higher
 2. Increase `CHECK_INTERVAL_MINUTES` to reduce frequency
-3. See [API_ALTERNATIVES.md](API_ALTERNATIVES.md) for more options
+3. Consider using **Skinport API** as an alternative (see below)
+4. See [API_ALTERNATIVES.md](API_ALTERNATIVES.md) for more options
+
+### Alternative: Skinport API
+
+You can use **Skinport API** instead of (or alongside) Steam API for more reliable pricing:
+
+1. Get your API key from [Skinport.com](https://skinport.com) (Settings → API)
+2. Add to your `.env`:
+   ```env
+   PRICE_PROVIDER=skinport
+   SKINPORT_API_KEY=your_api_key_here
+   ```
+3. See [SKINPORT_SETUP.md](SKINPORT_SETUP.md) for detailed setup instructions
+
+**Benefits:**
+- ✅ Official API with documented rate limits (8 requests/5min)
+- ✅ More reliable than Steam's unofficial endpoints
+- ✅ Clean JSON responses (no HTML parsing)
+
+**Note:** Skinport prices reflect the Skinport marketplace, which may differ from Steam Market prices.
 
 ## Notes
 
 - Uses Discord webhook for alerts by default. Replace `sendAlert` in `src/alert/alert.js` to support other transports.
 - The application automatically handles rate limiting with retry logic and caching.
 - For information about alternative APIs and solutions, see [API_ALTERNATIVES.md](API_ALTERNATIVES.md).
+- For Skinport API integration, see [SKINPORT_SETUP.md](SKINPORT_SETUP.md) and [SKINPORT_API.md](SKINPORT_API.md).
