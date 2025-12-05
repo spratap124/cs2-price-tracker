@@ -52,7 +52,6 @@ export default function startCron() {
 
     // Get all users with their webhooks
     const users = await User.find({});
-    const delayMs = Number(process.env.STEAM_API_DELAY_MS || 2000); // Default 2 seconds between requests
 
     // Process trackers for each user
     for (const user of users) {
@@ -69,11 +68,7 @@ export default function startCron() {
         try {
           const prevPrice = item.lastKnownPrice != null ? item.lastKnownPrice : null;
 
-          // Add delay before API call (except for first item of first user)
-          if (i > 0 || users.indexOf(user) > 0) {
-            await new Promise(resolve => setTimeout(resolve, delayMs));
-          }
-
+          // Rate limiting is now handled in steam.js with built-in retry logic
           const price = await getSkinPrice(item.skinName);
           if (price === null) {
             console.log(`No price found for ${item.skinName}`);
@@ -247,18 +242,13 @@ export default function startCron() {
 
           await item.save();
         } catch (err) {
+          // Errors are already logged in steam.js with detailed retry information
+          // Just log a summary here
           const errorMessage = err.message || err;
-          const statusCode = err.response ? err.response.status : null;
-
-          if (statusCode === 429) {
-            console.error(
-              `Rate limited (429) for ${item.skinName}. Waiting longer before continuing...`
-            );
-            // Wait longer if we hit rate limit
-            await new Promise(resolve => setTimeout(resolve, delayMs * 3));
-          } else {
-            console.error("Error checking tracker", item.skinName, errorMessage);
-          }
+          console.error(
+            `Failed to process tracker for "${item.skinName}": ${errorMessage}`
+          );
+          // Continue processing other trackers even if one fails
         }
       }
     }

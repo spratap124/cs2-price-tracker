@@ -32,7 +32,46 @@ POST /track
 
 GET /track -> list all trackers
 
+## Configuration
+
+### Environment Variables
+
+Add these to your `.env` file:
+
+```env
+# MongoDB connection string
+MONGODB_URI=mongodb+srv://...
+
+# Discord webhook URL (optional)
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
+
+# Price check interval in minutes (default: 5)
+CHECK_INTERVAL_MINUTES=5
+
+# Minimum time between Steam API requests in milliseconds (default: 5000 = 5 seconds)
+STEAM_API_MIN_INTERVAL_MS=5000
+
+# Currency code (default: 24 = INR)
+CURRENCY=24
+
+# Enable debug logging for Steam API (optional)
+DEBUG_STEAM=false
+```
+
+### Rate Limiting
+
+The application includes built-in rate limiting with:
+- Automatic retry with exponential backoff
+- 5-minute price caching to reduce redundant API calls
+- Configurable request intervals
+
+If you're still experiencing 429 (rate limit) errors:
+1. Increase `STEAM_API_MIN_INTERVAL_MS` to 10000 (10 seconds) or higher
+2. Increase `CHECK_INTERVAL_MINUTES` to reduce frequency
+3. See [API_ALTERNATIVES.md](API_ALTERNATIVES.md) for more options
+
 ## Notes
 
 - Uses Discord webhook for alerts by default. Replace `sendAlert` in `src/alert/alert.js` to support other transports.
-- Rate-limit your checks responsibly; Steam may throttle repeated requests.
+- The application automatically handles rate limiting with retry logic and caching.
+- For information about alternative APIs and solutions, see [API_ALTERNATIVES.md](API_ALTERNATIVES.md).
