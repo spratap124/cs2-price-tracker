@@ -10,12 +10,22 @@ function getSteamMarketUrl(skinName) {
 
 // alertType: 'buy' (price drop - good for buying), 'sell' (price rise - good for selling)
 //           'buy-bad' (price rise - bad for buying), 'sell-bad' (price drop - bad for selling)
-export async function sendAlert(title, message, skinName = null, alertType = null) {
-  const WEBHOOK = process.env.DISCORD_WEBHOOK_URL;
+// webhookUrl: Discord webhook URL (optional, falls back to env var for backward compatibility)
+export async function sendAlert(
+  title,
+  message,
+  skinName = null,
+  alertType = null,
+  webhookUrl = null,
+  currentPrice = null,
+  targetPrice = null,
+  interest = null
+) {
+  const WEBHOOK = webhookUrl || process.env.DISCORD_WEBHOOK_URL;
 
   // Determine emoji and color based on alert type
   let emoji = "";
-  let color = 0x808080; // Default gray
+  let color = 3066993; // Default Discord blue
 
   if (alertType === "buy") {
     emoji = "↓"; // Unicode down arrow
@@ -31,33 +41,69 @@ export async function sendAlert(title, message, skinName = null, alertType = nul
     color = 0xff0000; // Red
   }
 
+  // Build Discord webhook payload according to spec
   const payload = {
+    content: "Price Alert!",
     embeds: [
       {
-        title: `${emoji} ${title}`,
-        description: message,
+        title: skinName || title,
+        description: "Price has reached your target!",
+        fields: [],
         color: color,
-        footer: {
-          text: skinName || ""
-        }
+        url: skinName ? getSteamMarketUrl(skinName) : undefined
       }
     ]
   };
 
-  // Add Steam market link if skin name is provided
-  if (skinName) {
-    const steamUrl = getSteamMarketUrl(skinName);
-    payload.embeds[0].url = steamUrl;
-    payload.content = `[View on Steam Market](${steamUrl})`;
+  // Add fields if we have the data
+  if (currentPrice !== null) {
+    const formattedPrice =
+      typeof currentPrice === "number" ? `$${currentPrice.toLocaleString()}` : `$${currentPrice}`;
+    payload.embeds[0].fields.push({
+      name: "Current Price",
+      value: formattedPrice,
+      inline: true
+    });
+  }
+
+  if (targetPrice !== null && alertType) {
+    let targetValue = "";
+    if (alertType === "buy") {
+      targetValue = `≤ $${typeof targetPrice === "number" ? targetPrice.toLocaleString() : targetPrice}`;
+    } else if (alertType === "sell") {
+      targetValue = `≥ $${typeof targetPrice === "number" ? targetPrice.toLocaleString() : targetPrice}`;
+    }
+    if (targetValue) {
+      payload.embeds[0].fields.push({
+        name: "Target",
+        value: targetValue,
+        inline: true
+      });
+    }
+  }
+
+  if (interest) {
+    payload.embeds[0].fields.push({
+      name: "Interest",
+      value: interest.charAt(0).toUpperCase() + interest.slice(1),
+      inline: true
+    });
+  }
+
+  // Fallback to simple format if no fields were added
+  if (payload.embeds[0].fields.length === 0) {
+    payload.embeds[0].description = message;
   }
 
   if (WEBHOOK) {
     try {
       await axios.post(WEBHOOK, payload);
-      console.log("Alert sent successfully");
+      console.log("Alert sent successfully to webhook");
     } catch (err) {
       const errorData = err != null && err.response != null ? err.response.data : null;
       console.error("Failed to send webhook", errorData || err.message);
+      // Re-throw to allow retry logic in caller
+      throw err;
     }
   } else {
     console.log("ALERT", emoji, title, message);

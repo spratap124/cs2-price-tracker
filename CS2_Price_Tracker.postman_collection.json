@@ -2,112 +2,219 @@
   "info": {
     "_postman_id": "cs2-price-tracker-api",
     "name": "CS2 Price Tracker API",
-    "description": "API collection for CS2 Price Tracker - Track CS2 skin prices from Steam Community Market",
+    "description": "Multi-user API collection for CS2 Price Tracker - Track CS2 skin prices from Steam Community Market with Discord webhook notifications",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [{
-      "name": "Create Tracker",
-      "request": {
-        "method": "POST",
-        "header": [{
-          "key": "Content-Type",
-          "value": "application/json",
-          "type": "text"
-        }],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"skinName\": \"AK-47 | Redline (Field-Tested)\",\n  \"interest\": \"buy\",\n  \"targetDown\": 1800,\n  \"targetUp\": 2500\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
+      "name": "User Management",
+      "item": [{
+          "name": "Create User",
+          "request": {
+            "method": "POST",
+            "header": [{
+              "key": "Content-Type",
+              "value": "application/json",
+              "type": "text"
+            }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"discordWebhook\": \"https://discord.com/api/webhooks/...\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user",
+              "host": ["{{baseUrl}}"],
+              "path": ["user"]
+            },
+            "description": "Creates a new user with a Discord webhook URL.\n\n**Request Body:**\n- `discordWebhook` (required): Discord webhook URL for price alerts\n\n**Response:**\n- `userId`: Unique user identifier (save this!)\n- `discordWebhook`: The webhook URL\n- `createdAt`: Creation timestamp\n\n**Status Codes:**\n- 201 Created - User created successfully\n- 400 Bad Request - Invalid webhook URL\n- 500 Internal Server Error - Server error"
+          },
+          "response": []
         },
-        "url": {
-          "raw": "{{baseUrl}}/track",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "track"
-          ]
+        {
+          "name": "Get User",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user/:userId",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", ":userId"],
+              "variable": [{
+                "key": "userId",
+                "value": "user_id_here",
+                "description": "Unique user identifier"
+              }]
+            },
+            "description": "Retrieves user information including Discord webhook.\n\n**Response:**\n- `userId`: Unique user identifier\n- `discordWebhook`: Discord webhook URL\n- `createdAt`: Creation timestamp\n\n**Status Codes:**\n- 200 OK - User found\n- 404 Not Found - User does not exist\n- 500 Internal Server Error - Server error"
+          },
+          "response": []
         },
-        "description": "Create a new price tracker for a CS2 skin. The system will attempt to fetch the current price and image URL immediately.\n\n**Parameters:**\n- `skinName` (required): Full name of the CS2 skin\n- `interest` (optional): User's interest - \"buy\", \"sell\", or \"both\" (default: \"buy\")\n- `targetDown` (optional): Price threshold for buying alerts (price drops below this)\n- `targetUp` (optional): Price threshold for selling alerts (price rises above this)"
-      },
-      "response": []
+        {
+          "name": "Update User",
+          "request": {
+            "method": "PUT",
+            "header": [{
+              "key": "Content-Type",
+              "value": "application/json",
+              "type": "text"
+            }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"discordWebhook\": \"https://discord.com/api/webhooks/...\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user/:userId",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", ":userId"],
+              "variable": [{
+                "key": "userId",
+                "value": "user_id_here",
+                "description": "Unique user identifier"
+              }]
+            },
+            "description": "Updates user's Discord webhook URL.\n\n**Request Body:**\n- `discordWebhook` (required): New Discord webhook URL\n\n**Response:**\n- `userId`: Unique user identifier\n- `discordWebhook`: Updated webhook URL\n- `updatedAt`: Update timestamp\n\n**Status Codes:**\n- 200 OK - User updated successfully\n- 400 Bad Request - Invalid webhook URL\n- 404 Not Found - User does not exist\n- 500 Internal Server Error - Server error"
+          },
+          "response": []
+        },
+        {
+          "name": "Recover User Account",
+          "request": {
+            "method": "POST",
+            "header": [{
+              "key": "Content-Type",
+              "value": "application/json",
+              "type": "text"
+            }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"discordWebhook\": \"https://discord.com/api/webhooks/...\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user/recover",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "recover"]
+            },
+            "description": "Recovers a user account by Discord webhook URL. This allows users to retrieve their userId if they've lost it (e.g., localStorage was cleared).\n\n**Request Body:**\n- `discordWebhook` (required): Discord webhook URL associated with the account\n\n**Response:**\n- `userId`: Unique user identifier\n- `discordWebhook`: The webhook URL\n- `createdAt`: Creation timestamp\n\n**Status Codes:**\n- 200 OK - User found and recovered\n- 404 Not Found - No user found with this webhook\n- 400 Bad Request - Invalid webhook URL format\n- 500 Internal Server Error - Server error"
+          },
+          "response": []
+        }
+      ],
+      "description": "User management endpoints for creating, retrieving, updating, and recovering user accounts."
     },
     {
-      "name": "List All Trackers",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/track",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "track"
-          ]
+      "name": "Tracker Management",
+      "item": [{
+          "name": "Get Trackers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/track?userId=:userId",
+              "host": ["{{baseUrl}}"],
+              "path": ["track"],
+              "query": [{
+                "key": "userId",
+                "value": "user_id_here",
+                "description": "The user ID to filter trackers",
+                "disabled": false
+              }]
+            },
+            "description": "Retrieves all trackers for a specific user.\n\n**Query Parameters:**\n- `userId` (required): The user ID to filter trackers\n\n**Response:**\nArray of tracker objects with fields:\n- `_id`: Tracker ID\n- `userId`: User ID\n- `skinName`: Full skin name\n- `interest`: \"buy\", \"sell\", or \"both\"\n- `targetDown`: Price threshold for buying alerts\n- `targetUp`: Price threshold for selling alerts\n- `lastKnownPrice`: Last known price\n- `imageUrl`: Skin image URL\n- `iconUrl`: Skin icon hash\n- `downAlertSent`: Whether down alert was sent\n- `upAlertSent`: Whether up alert was sent\n- `lastDownAlertPrice`: Last price when down alert was sent\n- `lastUpAlertPrice`: Last price when up alert was sent\n- `createdAt`: Creation timestamp\n- `updatedAt`: Update timestamp\n\n**Status Codes:**\n- 200 OK - Success\n- 400 Bad Request - Missing userId parameter\n- 500 Internal Server Error - Server error"
+          },
+          "response": []
         },
-        "description": "Get a list of all price trackers, sorted by creation date (newest first)."
-      },
-      "response": []
+        {
+          "name": "Create Tracker",
+          "request": {
+            "method": "POST",
+            "header": [{
+              "key": "Content-Type",
+              "value": "application/json",
+              "type": "text"
+            }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"user-id\",\n  \"skinName\": \"AK-47 | Redline (Field-Tested)\",\n  \"interest\": \"sell\",\n  \"targetDown\": 1800,\n  \"targetUp\": 2500\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/track",
+              "host": ["{{baseUrl}}"],
+              "path": ["track"]
+            },
+            "description": "Creates a new price tracker for a user. The system will attempt to fetch the current price and image URL immediately.\n\n**Request Body:**\n- `userId` (required): User ID who owns this tracker\n- `skinName` (required): Full name of the CS2 skin\n- `interest` (optional): User's interest - \"buy\", \"sell\", or \"both\" (default: \"buy\")\n- `targetDown` (optional): Price threshold for buying alerts (price drops below this)\n- `targetUp` (optional): Price threshold for selling alerts (price rises above this)\n\n**Response:**\n- `_id`: Tracker ID\n- `userId`: User ID\n- `skinName`: Full skin name\n- `interest`: Interest type\n- `targetDown`: Down target price\n- `targetUp`: Up target price\n- `lastKnownPrice`: Last known price (may be null)\n- `downAlertSent`: Alert status flag\n- `upAlertSent`: Alert status flag\n- `createdAt`: Creation timestamp\n\n**Status Codes:**\n- 201 Created - Tracker created successfully\n- 400 Bad Request - Invalid request data\n- 404 Not Found - User does not exist\n- 500 Internal Server Error - Server error"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Tracker",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/track/:trackerId?userId=:userId",
+              "host": ["{{baseUrl}}"],
+              "path": ["track", ":trackerId"],
+              "query": [{
+                "key": "userId",
+                "value": "user_id_here",
+                "description": "The user ID to verify ownership",
+                "disabled": false
+              }],
+              "variable": [{
+                "key": "trackerId",
+                "value": "tracker_id_here",
+                "description": "MongoDB ObjectId of the tracker to delete"
+              }]
+            },
+            "description": "Deletes a tracker. The backend verifies that the tracker belongs to the requesting user.\n\n**Path Parameters:**\n- `trackerId` (required): Tracker ID to delete\n\n**Query Parameters:**\n- `userId` (required): The user ID to verify ownership\n\n**Response:**\n- `success`: true\n\n**Status Codes:**\n- 200 OK - Tracker deleted successfully\n- 403 Forbidden - Tracker does not belong to user\n- 404 Not Found - Tracker does not exist\n- 400 Bad Request - Missing userId parameter\n- 500 Internal Server Error - Server error"
+          },
+          "response": []
+        }
+      ],
+      "description": "Tracker management endpoints for creating, retrieving, and deleting price trackers."
     },
     {
-      "name": "Delete Tracker (Single)",
-      "request": {
-        "method": "DELETE",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/track/:id",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "track",
-            ":id"
-          ],
-          "variable": [{
-            "key": "id",
-            "value": "tracker_id_here",
-            "description": "MongoDB ObjectId of the tracker to delete"
-          }]
+      "name": "Utility",
+      "item": [{
+        "name": "Get Steam Image",
+        "request": {
+          "method": "GET",
+          "header": [],
+          "url": {
+            "raw": "{{baseUrl}}/steam-image?url=:encodedUrl",
+            "host": ["{{baseUrl}}"],
+            "path": ["steam-image"],
+            "query": [{
+              "key": "url",
+              "value": "https%3A%2F%2Fsteamcommunity.com%2Fmarket%2Flistings%2F730%2FAK-47%20%7C%20Redline%20%28Field-Tested%29",
+              "description": "Encoded Steam market listing URL",
+              "disabled": false
+            }]
+          },
+          "description": "Fetches the image URL from a Steam market listing page. This is optional and can be used to get skin images.\n\n**Query Parameters:**\n- `url` (required): Encoded Steam market listing URL\n\n**Response:**\n- `imageUrl`: Full URL to the skin image\n\n**Status Codes:**\n- 200 OK - Image URL retrieved\n- 400 Bad Request - Invalid URL\n- 500 Internal Server Error - Server error\n\n**Example:**\nEncode the Steam market URL before passing it as the query parameter:\n- Original: `https://steamcommunity.com/market/listings/730/AK-47 | Redline (Field-Tested)`\n- Encoded: `https%3A%2F%2Fsteamcommunity.com%2Fmarket%2Flistings%2F730%2FAK-47%20%7C%20Redline%20%28Field-Tested%29`"
         },
-        "description": "Delete a single price tracker by its ID from the URL parameter."
-      },
-      "response": []
-    },
-    {
-      "name": "Delete Trackers (Multiple)",
-      "request": {
-        "method": "DELETE",
-        "header": [{
-          "key": "Content-Type",
-          "value": "application/json",
-          "type": "text"
-        }],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"ids\": [\n    \"tracker_id_1\",\n    \"tracker_id_2\",\n    \"tracker_id_3\"\n  ]\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "url": {
-          "raw": "{{baseUrl}}/track",
-          "host": [
-            "{{baseUrl}}"
-          ],
-          "path": [
-            "track"
-          ]
-        },
-        "description": "Delete multiple price trackers by providing an array of IDs in the request body. Returns the count of deleted trackers."
-      },
-      "response": []
+        "response": []
+      }],
+      "description": "Utility endpoints for additional functionality."
     }
   ],
   "variable": [{

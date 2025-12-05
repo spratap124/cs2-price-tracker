@@ -1,6 +1,11 @@
 import mongoose from "mongoose";
 
 const TrackerSchema = new mongoose.Schema({
+  userId: {
+    type: String,
+    required: true,
+    index: true
+  },
   skinName: {
     type: String,
     required: true
@@ -26,6 +31,10 @@ const TrackerSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  iconUrl: {
+    type: String,
+    default: null
+  },
   downAlertSent: {
     type: Boolean,
     default: false
@@ -45,7 +54,17 @@ const TrackerSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
   }
+});
+
+// Update the updatedAt field before saving
+TrackerSchema.pre("save", function (next) {
+  this.updatedAt = Date.now();
+  next();
 });
 
 export default mongoose.model("Tracker", TrackerSchema);

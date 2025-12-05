@@ -1,25 +1,60 @@
 import express from "express";
 import Tracker from "../models/tracker.js";
-import {
-  getSkinPrice,
-  getSkinImageUrl
-} from "../steam/steam.js";
+import User from "../models/user.js";
+import { getSkinPrice, getSkinImageUrl } from "../steam/steam.js";
 
 const router = express.Router();
 
+// Get Trackers
+// GET /track?userId=:userId
+router.get("/", async (req, res) => {
+  try {
+    const { userId } = req.query;
+
+    if (!userId) {
+      res.status(400);
+      return res.json({
+        error: "Missing userId parameter"
+      });
+    }
+
+    const trackers = await Tracker.find({ userId }).sort({ createdAt: -1 });
+    res.json(trackers);
+  } catch (err) {
+    console.error("Error fetching trackers:", err);
+    res.status(500);
+    res.json({
+      error: "Internal server error"
+    });
+  }
+});
+
 // Create tracker
+// POST /track
 router.post("/", async (req, res) => {
   try {
-    const {
-      skinName,
-      interest,
-      targetDown,
-      targetUp
-    } = req.body;
+    const { userId, skinName, interest, targetDown, targetUp } = req.body;
+
+    if (!userId) {
+      res.status(400);
+      return res.json({
+        error: "userId is required"
+      });
+    }
+
     if (!skinName) {
       res.status(400);
       return res.json({
-        error: "skinName required"
+        error: "skinName is required"
+      });
+    }
+
+    // Verify user exists
+    const user = await User.findOne({ userId });
+    if (!user) {
+      res.status(404);
+      return res.json({
+        error: "User does not exist"
       });
     }
 
@@ -42,6 +77,7 @@ router.post("/", async (req, res) => {
     }
 
     const tracker = await Tracker.create({
+      userId,
       skinName,
       interest: interest != null ? interest : "buy",
       targetDown: targetDown != null ? targetDown : null,
@@ -50,64 +86,68 @@ router.post("/", async (req, res) => {
       imageUrl: imageUrl
     });
 
+    res.status(201);
     res.json({
-      success: true,
-      tracker
+      _id: tracker._id,
+      userId: tracker.userId,
+      skinName: tracker.skinName,
+      interest: tracker.interest,
+      targetDown: tracker.targetDown,
+      targetUp: tracker.targetUp,
+      lastKnownPrice: tracker.lastKnownPrice,
+      downAlertSent: tracker.downAlertSent,
+      upAlertSent: tracker.upAlertSent,
+      createdAt: tracker.createdAt
     });
   } catch (err) {
-    console.error(err);
+    console.error("Error creating tracker:", err);
     res.status(500);
     res.json({
-      error: "internal error"
+      error: "Internal server error"
     });
   }
 });
 
-// List all trackers
-router.get("/", async (req, res) => {
-  const query = Tracker.find();
-  query.sort({
-    createdAt: -1
-  });
-  const trackers = await query;
-  res.json(trackers);
-});
-
-// Delete tracker(s)
-// Supports: DELETE /track/:id (single ID in URL)
-//          DELETE /track with body: { ids: ["id1", "id2", ...] } (multiple IDs)
-router.delete("/:id?", async (req, res) => {
+// Delete tracker
+// DELETE /track/:trackerId?userId=:userId
+router.delete("/:trackerId", async (req, res) => {
   try {
-    const ids = req.body.ids;
+    const { trackerId } = req.params;
+    const { userId } = req.query;
 
-    if (ids && Array.isArray(ids) && ids.length > 0) {
-      // Delete multiple trackers by IDs from request body
-      const result = await Tracker.deleteMany({
-        _id: {
-          $in: ids
-        }
-      });
-      res.json({
-        success: true,
-        deletedCount: result.deletedCount
-      });
-    } else if (req.params.id) {
-      // Delete single tracker by ID from URL parameter
-      await Tracker.findByIdAndDelete(req.params.id);
-      res.json({
-        success: true
-      });
-    } else {
+    if (!userId) {
       res.status(400);
-      res.json({
-        error: "Either provide an ID in the URL or an array of IDs in the request body"
+      return res.json({
+        error: "userId query parameter is required"
       });
     }
+
+    const tracker = await Tracker.findById(trackerId);
+
+    if (!tracker) {
+      res.status(404);
+      return res.json({
+        error: "Tracker does not exist"
+      });
+    }
+
+    // Verify ownership
+    if (tracker.userId !== userId) {
+      res.status(403);
+      return res.json({
+        error: "Tracker does not belong to user"
+      });
+    }
+
+    await Tracker.findByIdAndDelete(trackerId);
+    res.json({
+      success: true
+    });
   } catch (err) {
-    console.error(err);
+    console.error("Error deleting tracker:", err);
     res.status(500);
     res.json({
-      error: "internal error"
+      error: "Internal server error"
     });
   }
 });

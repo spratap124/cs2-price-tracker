@@ -3,6 +3,8 @@ import dotenv from "dotenv";
 import mongoose from "mongoose";
 import cors from "cors";
 import trackerRouter from "./src/routes/tracker.js";
+import userRouter from "./src/routes/user.js";
+import utilityRouter from "./src/routes/utility.js";
 import startCron from "./src/cron/priceCheck.js";
 
 dotenv.config();
@@ -17,6 +19,8 @@ app.use(
 app.use(express.json());
 
 app.use("/track", trackerRouter);
+app.use("/user", userRouter);
+app.use("/", utilityRouter);
 
 const PORT = process.env.PORT || 3001;
 
