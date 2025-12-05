@@ -1,0 +1,87 @@
+{
+  "info": {
+    "_postman_id": "cs2-price-tracker-api",
+    "name": "CS2 Price Tracker API",
+    "description": "API collection for CS2 Price Tracker - Track CS2 skin prices from Steam Community Market",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [{
+      "name": "Create Tracker",
+      "request": {
+        "method": "POST",
+        "header": [{
+          "key": "Content-Type",
+          "value": "application/json",
+          "type": "text"
+        }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"skinName\": \"AK-47 | Redline (Field-Tested)\",\n  \"targetDown\": 1800,\n  \"targetUp\": 2500\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/track",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "track"
+          ]
+        },
+        "description": "Create a new price tracker for a CS2 skin. The system will attempt to fetch the current price immediately."
+      },
+      "response": []
+    },
+    {
+      "name": "List All Trackers",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/track",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "track"
+          ]
+        },
+        "description": "Get a list of all price trackers, sorted by creation date (newest first)."
+      },
+      "response": []
+    },
+    {
+      "name": "Delete Tracker",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/track/:id",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "track",
+            ":id"
+          ],
+          "variable": [{
+            "key": "id",
+            "value": "tracker_id_here",
+            "description": "MongoDB ObjectId of the tracker to delete"
+          }]
+        },
+        "description": "Delete a price tracker by its ID."
+      },
+      "response": []
+    }
+  ],
+  "variable": [{
+    "key": "baseUrl",
+    "value": "http://localhost:3001",
+    "type": "string"
+  }]
+}
