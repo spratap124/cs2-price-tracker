@@ -14,6 +14,7 @@ async function sendAlertWithRetry(
   currentPrice,
   targetPrice,
   interest,
+  imageUrl = null,
   maxRetries = 3
 ) {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -26,7 +27,8 @@ async function sendAlertWithRetry(
         webhookUrl,
         currentPrice,
         targetPrice,
-        interest
+        interest,
+        imageUrl
       );
       return; // Success
     } catch (err) {
@@ -112,7 +114,8 @@ export default function startCron() {
                       user.discordWebhook,
                       price,
                       item.targetDown,
-                      interest
+                      interest,
+                      item.imageUrl
                     );
                     item.downAlertSent = true;
                     item.lastDownAlertPrice = price;
@@ -135,7 +138,8 @@ export default function startCron() {
                     user.discordWebhook,
                     price,
                     item.targetDown,
-                    interest
+                    interest,
+                    item.imageUrl
                   );
                 } catch (err) {
                   console.error(
@@ -178,7 +182,8 @@ export default function startCron() {
                       user.discordWebhook,
                       price,
                       item.targetUp,
-                      interest
+                      interest,
+                      item.imageUrl
                     );
                     item.upAlertSent = true;
                     item.lastUpAlertPrice = price;
@@ -201,7 +206,8 @@ export default function startCron() {
                     user.discordWebhook,
                     price,
                     item.targetUp,
-                    interest
+                    interest,
+                    item.imageUrl
                   );
                 } catch (err) {
                   console.error(
@@ -245,9 +251,7 @@ export default function startCron() {
           // Errors are already logged in steam.js with detailed retry information
           // Just log a summary here
           const errorMessage = err.message || err;
-          console.error(
-            `Failed to process tracker for "${item.skinName}": ${errorMessage}`
-          );
+          console.error(`Failed to process tracker for "${item.skinName}": ${errorMessage}`);
           // Continue processing other trackers even if one fails
         }
       }

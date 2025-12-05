@@ -2,6 +2,45 @@ import axios from "axios";
 
 const APPID = 730; // CS2 app ID
 
+// Get currency symbol from Steam currency code
+function getCurrencySymbol(currencyCode) {
+  const currencyMap = {
+    1: "$", // USD
+    2: "£", // GBP
+    3: "€", // EUR
+    4: "CHF", // CHF
+    5: "RUB", // RUB
+    6: "PLN", // PLN
+    7: "BRL", // BRL
+    8: "JPY", // JPY
+    9: "SEK", // SEK
+    10: "IDR", // IDR
+    11: "MYR", // MYR
+    12: "PHP", // PHP
+    13: "SGD", // SGD
+    14: "THB", // THB
+    15: "VND", // VND
+    16: "KRW", // KRW
+    17: "TRY", // TRY
+    18: "UAH", // UAH
+    19: "MXN", // MXN
+    20: "CAD", // CAD
+    21: "AUD", // AUD
+    22: "NZD", // NZD
+    23: "CNY", // CNY
+    24: "₹", // INR
+    25: "CLP", // CLP
+    26: "PEN", // PEN
+    27: "COP", // COP
+    28: "ZAR", // ZAR
+    29: "HKD", // HKD
+    30: "TWD", // TWD
+    31: "SAR", // SAR
+    32: "AED" // AED
+  };
+  return currencyMap[String(currencyCode)] || "$"; // Default to $ if unknown
+}
+
 // Generate Steam market URL for a skin
 function getSteamMarketUrl(skinName) {
   const encodedName = encodeURIComponent(skinName);
@@ -11,6 +50,7 @@ function getSteamMarketUrl(skinName) {
 // alertType: 'buy' (price drop - good for buying), 'sell' (price rise - good for selling)
 //           'buy-bad' (price rise - bad for buying), 'sell-bad' (price drop - bad for selling)
 // webhookUrl: Discord webhook URL (optional, falls back to env var for backward compatibility)
+// imageUrl: URL to the skin image (optional)
 export async function sendAlert(
   title,
   message,
@@ -19,9 +59,14 @@ export async function sendAlert(
   webhookUrl = null,
   currentPrice = null,
   targetPrice = null,
-  interest = null
+  interest = null,
+  imageUrl = null
 ) {
   const WEBHOOK = webhookUrl || process.env.DISCORD_WEBHOOK_URL;
+
+  // Get currency symbol from environment variable (default: INR/₹)
+  const CURRENCY_CODE = process.env.CURRENCY || "24";
+  const CURRENCY_SYMBOL = getCurrencySymbol(CURRENCY_CODE);
 
   // Determine emoji and color based on alert type
   let emoji = "";
@@ -50,7 +95,8 @@ export async function sendAlert(
         description: "Price has reached your target!",
         fields: [],
         color: color,
-        url: skinName ? getSteamMarketUrl(skinName) : undefined
+        url: skinName ? getSteamMarketUrl(skinName) : undefined,
+        thumbnail: imageUrl ? { url: imageUrl } : undefined
       }
     ]
   };
@@ -58,7 +104,9 @@ export async function sendAlert(
   // Add fields if we have the data
   if (currentPrice !== null) {
     const formattedPrice =
-      typeof currentPrice === "number" ? `$${currentPrice.toLocaleString()}` : `$${currentPrice}`;
+      typeof currentPrice === "number"
+        ? `${CURRENCY_SYMBOL}${currentPrice.toLocaleString()}`
+        : `${CURRENCY_SYMBOL}${currentPrice}`;
     payload.embeds[0].fields.push({
       name: "Current Price",
       value: formattedPrice,
@@ -68,10 +116,10 @@ export async function sendAlert(
 
   if (targetPrice !== null && alertType) {
     let targetValue = "";
-    if (alertType === "buy") {
-      targetValue = `≤ $${typeof targetPrice === "number" ? targetPrice.toLocaleString() : targetPrice}`;
-    } else if (alertType === "sell") {
-      targetValue = `≥ $${typeof targetPrice === "number" ? targetPrice.toLocaleString() : targetPrice}`;
+    if (alertType === "buy" || alertType === "buy-bad") {
+      targetValue = `≤ ${CURRENCY_SYMBOL}${typeof targetPrice === "number" ? targetPrice.toLocaleString() : targetPrice}`;
+    } else if (alertType === "sell" || alertType === "sell-bad") {
+      targetValue = `≥ ${CURRENCY_SYMBOL}${typeof targetPrice === "number" ? targetPrice.toLocaleString() : targetPrice}`;
     }
     if (targetValue) {
       payload.embeds[0].fields.push({
