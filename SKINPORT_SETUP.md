@@ -2,13 +2,13 @@
 
 ## Quick Start
 
-### 1. Get Your Skinport API Key
+### 1. Get Your Skinport API Credentials
 
 1. Go to [Skinport.com](https://skinport.com)
 2. Create an account or log in
 3. Navigate to **Settings → API**
-4. Click **Generate API Key**
-5. Copy your API key (keep it secure!)
+4. Generate your **Client ID** and **Client Secret**
+5. Copy both credentials (keep them secure!)
 
 ### 2. Configure Your .env File
 
@@ -23,7 +23,9 @@ PRICE_PROVIDER=skinport
 USE_PRICE_FALLBACK=true
 
 # Skinport API Configuration
-SKINPORT_API_KEY=your_api_key_here
+# Get your credentials from: https://skinport.com (Settings → API)
+SKINPORT_CLIENT_ID=your_client_id_here
+SKINPORT_CLIENT_SECRET=your_client_secret_here
 
 # Optional: Adjust Skinport rate limiting (default: 37500ms = 37.5 seconds)
 # Skinport allows 8 requests per 5 minutes
@@ -97,14 +99,15 @@ SKINPORT_API_MIN_INTERVAL_MS=30000
 
 ## Troubleshooting
 
-### "SKINPORT_API_KEY environment variable is required"
-- Make sure you've added `SKINPORT_API_KEY=your_key` to your `.env` file
-- Restart your server after adding it
+### "SKINPORT_CLIENT_ID and SKINPORT_CLIENT_SECRET environment variables are required"
+- Make sure you've added both `SKINPORT_CLIENT_ID` and `SKINPORT_CLIENT_SECRET` to your `.env` file
+- Restart your server after adding them
 
 ### "Authentication failed" or 401 errors
-- Your API key is invalid or expired
-- Generate a new key from Skinport settings
+- Your Client ID or Client Secret is invalid or expired
+- Generate new credentials from Skinport settings
 - Make sure there are no extra spaces in your `.env` file
+- Verify you're using Basic Authentication correctly (see [docs](https://docs.skinport.com/introduction/authentication))
 
 ### Still getting rate limited
 - Skinport has stricter limits than expected
@@ -116,6 +119,13 @@ SKINPORT_API_MIN_INTERVAL_MS=30000
 - Prices can differ significantly between platforms
 - Consider which prices your users care about
 
+### "Bad Request (400)" errors
+- **INR (Indian Rupee) is NOT supported by Skinport API**
+- If you're using `CURRENCY=24` (INR), the system will automatically fallback to USD for Skinport
+- Steam API will still use INR, but Skinport will use USD
+- To use a different fallback currency, set `SKINPORT_FALLBACK_CURRENCY=EUR` (or any supported currency)
+- See [SKINPORT_API.md](SKINPORT_API.md) for supported currencies
+
 ## Comparison: Steam vs Skinport
 
 | Feature | Steam | Skinport |
@@ -123,7 +133,7 @@ SKINPORT_API_MIN_INTERVAL_MS=30000
 | **Rate Limit** | Very strict, unpredictable | 8 req/5min (documented) |
 | **Reliability** | Often rate limited | More reliable |
 | **Price Source** | Steam Market | Skinport Marketplace |
-| **Setup** | No API key needed | Requires API key |
+| **Setup** | No API key needed | Requires Client ID + Secret |
 | **Cost** | Free | Free |
 
 ## Need Help?

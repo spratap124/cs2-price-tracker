@@ -1,7 +1,8 @@
 import express from "express";
 import Tracker from "../models/tracker.js";
 import User from "../models/user.js";
-import { getSkinPrice, getSkinImageUrl } from "../steam/steam.js";
+import { getSkinPrice } from "../providers/priceProvider.js";
+import { getSkinImageUrl } from "../steam/steam.js";
 
 const router = express.Router();
 

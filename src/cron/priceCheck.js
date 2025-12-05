@@ -1,7 +1,7 @@
 import cron from "node-cron";
 import Tracker from "../models/tracker.js";
 import User from "../models/user.js";
-import { getSkinPrice } from "../steam/steam.js";
+import { getSkinPrice } from "../providers/priceProvider.js";
 import { sendAlert } from "../alert/alert.js";
 
 // Retry logic for Discord webhook calls

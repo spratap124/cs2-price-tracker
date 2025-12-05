@@ -55,10 +55,16 @@ export async function sendAlert(
     ]
   };
 
+  // All prices are stored and returned in INR (currency conversion happens in price provider)
+  // Always use INR symbol (₹) for all alerts
+  const currencySymbol = "₹"; // Always INR since all prices are converted to INR
+
   // Add fields if we have the data
   if (currentPrice !== null) {
     const formattedPrice =
-      typeof currentPrice === "number" ? `$${currentPrice.toLocaleString()}` : `$${currentPrice}`;
+      typeof currentPrice === "number"
+        ? `${currencySymbol}${currentPrice.toLocaleString("en-IN")}`
+        : `${currencySymbol}${currentPrice}`;
     payload.embeds[0].fields.push({
       name: "Current Price",
       value: formattedPrice,
@@ -68,10 +74,13 @@ export async function sendAlert(
 
   if (targetPrice !== null && alertType) {
     let targetValue = "";
+    const formattedTarget =
+      typeof targetPrice === "number" ? targetPrice.toLocaleString("en-IN") : targetPrice;
+
     if (alertType === "buy") {
-      targetValue = `≤ $${typeof targetPrice === "number" ? targetPrice.toLocaleString() : targetPrice}`;
+      targetValue = `≤ ${currencySymbol}${formattedTarget}`;
     } else if (alertType === "sell") {
-      targetValue = `≥ $${typeof targetPrice === "number" ? targetPrice.toLocaleString() : targetPrice}`;
+      targetValue = `≥ ${currencySymbol}${formattedTarget}`;
     }
     if (targetValue) {
       payload.embeds[0].fields.push({

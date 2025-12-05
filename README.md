@@ -75,11 +75,12 @@ If you're still experiencing 429 (rate limit) errors:
 
 You can use **Skinport API** instead of (or alongside) Steam API for more reliable pricing:
 
-1. Get your API key from [Skinport.com](https://skinport.com) (Settings → API)
+1. Get your Client ID and Client Secret from [Skinport.com](https://skinport.com) (Settings → API)
 2. Add to your `.env`:
    ```env
    PRICE_PROVIDER=skinport
-   SKINPORT_API_KEY=your_api_key_here
+   SKINPORT_CLIENT_ID=your_client_id_here
+   SKINPORT_CLIENT_SECRET=your_client_secret_here
    ```
 3. See [SKINPORT_SETUP.md](SKINPORT_SETUP.md) for detailed setup instructions
 
