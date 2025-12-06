@@ -11,22 +11,75 @@ const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes cache
 
 // Rate limiting state
 let lastRequestTime = 0;
-// Minimum time between requests (Steam is strict - default 5 seconds, configurable via env)
-const MIN_REQUEST_INTERVAL_MS = Number(process.env.STEAM_API_MIN_INTERVAL_MS || 5000);
+// Minimum time between requests (Steam is strict - default 10 seconds, configurable via env)
+// Increased from 5s to 10s for better reliability
+const MIN_REQUEST_INTERVAL_MS = Number(process.env.STEAM_API_MIN_INTERVAL_MS || 10000);
+
+// Cooldown period after a 429 error (increases with each 429)
+let cooldownUntil = 0;
+let consecutive429Count = 0;
 
 /**
  * Wait until enough time has passed since the last request
+ * Also respects cooldown period after 429 errors
  */
 async function waitForRateLimit() {
   const now = Date.now();
+  
+  // First, check if we're in a cooldown period (after 429 errors)
+  if (now < cooldownUntil) {
+    const cooldownWait = cooldownUntil - now;
+    if (process.env.DEBUG_STEAM === "true") {
+      console.log(`[Steam API] In cooldown period, waiting ${cooldownWait / 1000}s...`);
+    }
+    await new Promise(resolve => setTimeout(resolve, cooldownWait));
+  }
+  
+  // Then check minimum interval between requests
   const timeSinceLastRequest = now - lastRequestTime;
   
   if (timeSinceLastRequest < MIN_REQUEST_INTERVAL_MS) {
     const waitTime = MIN_REQUEST_INTERVAL_MS - timeSinceLastRequest;
+    if (process.env.DEBUG_STEAM === "true") {
+      console.log(`[Steam API] Rate limiting: waiting ${waitTime / 1000}s...`);
+    }
     await new Promise(resolve => setTimeout(resolve, waitTime));
   }
   
   lastRequestTime = Date.now();
+}
+
+/**
+ * Handle 429 rate limit error - set cooldown period
+ */
+function handle429Error() {
+  consecutive429Count++;
+  
+  // Exponential cooldown: 30s, 60s, 120s, etc.
+  const cooldownDuration = Math.min(
+    Math.pow(2, consecutive429Count - 1) * 30000, // 30s, 60s, 120s, 240s...
+    300000 // Max 5 minutes
+  );
+  
+  cooldownUntil = Date.now() + cooldownDuration;
+  
+  console.warn(
+    `[Steam API] 429 error detected (count: ${consecutive429Count}). ` +
+    `Entering cooldown for ${cooldownDuration / 1000}s...`
+  );
+}
+
+/**
+ * Reset cooldown on successful request
+ */
+function resetCooldown() {
+  if (consecutive429Count > 0) {
+    consecutive429Count = 0;
+    cooldownUntil = 0;
+    if (process.env.DEBUG_STEAM === "true") {
+      console.log(`[Steam API] Cooldown reset after successful request`);
+    }
+  }
 }
 
 /**
@@ -70,16 +123,25 @@ export async function getSkinPrice(marketHashName, useCache = true) {
 
       // Handle rate limiting (429)
       if (res.status === 429) {
+        // Set cooldown period
+        handle429Error();
+        
+        // Use retry-after header if available, otherwise use exponential backoff
         const retryAfter = res.headers["retry-after"] 
           ? parseInt(res.headers["retry-after"]) * 1000 
-          : Math.pow(2, attempt) * 5000; // Exponential backoff: 10s, 20s, 40s
+          : Math.pow(2, attempt) * 10000; // Exponential backoff: 20s, 40s, 80s (more conservative)
+        
+        // Ensure we wait at least as long as the cooldown period
+        const waitTime = Math.max(retryAfter, cooldownUntil - Date.now());
         
         if (attempt < maxRetries) {
           console.warn(
             `[Steam API] Rate limited (429) for "${marketHashName}". ` +
-            `Attempt ${attempt}/${maxRetries}. Waiting ${retryAfter / 1000}s before retry...`
+            `Attempt ${attempt}/${maxRetries}. Waiting ${Math.ceil(waitTime / 1000)}s before retry...`
           );
-          await new Promise(resolve => setTimeout(resolve, retryAfter));
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          // Update lastRequestTime to account for the wait
+          lastRequestTime = Date.now();
           continue; // Retry
         } else {
           throw new Error(`Rate limited after ${maxRetries} attempts`);
@@ -146,6 +208,9 @@ export async function getSkinPrice(marketHashName, useCache = true) {
         });
       }
 
+      // Success - reset cooldown
+      resetCooldown();
+
       if (process.env.DEBUG_STEAM === "true") {
         console.log(`[Steam API] Parsed value:`, value);
       }
@@ -160,16 +225,24 @@ export async function getSkinPrice(marketHashName, useCache = true) {
         const status = err.response.status;
         
         if (status === 429) {
+          // Set cooldown period
+          handle429Error();
+          
           const retryAfter = err.response.headers["retry-after"] 
             ? parseInt(err.response.headers["retry-after"]) * 1000 
-            : Math.pow(2, attempt) * 5000;
+            : Math.pow(2, attempt) * 10000; // More conservative: 20s, 40s, 80s
+          
+          // Ensure we wait at least as long as the cooldown period
+          const waitTime = Math.max(retryAfter, cooldownUntil - Date.now());
           
           if (attempt < maxRetries) {
             console.warn(
               `[Steam API] Rate limited (429) for "${marketHashName}". ` +
-              `Attempt ${attempt}/${maxRetries}. Waiting ${retryAfter / 1000}s before retry...`
+              `Attempt ${attempt}/${maxRetries}. Waiting ${Math.ceil(waitTime / 1000)}s before retry...`
             );
-            await new Promise(resolve => setTimeout(resolve, retryAfter));
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+            // Update lastRequestTime to account for the wait
+            lastRequestTime = Date.now();
             continue; // Retry
           }
         } else if (status >= 500 && attempt < maxRetries) {
