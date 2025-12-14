@@ -1,4 +1,4 @@
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 
 // General API rate limiter - 100 requests per 15 minutes per IP
 export const generalLimiter = rateLimit({
@@ -11,14 +11,16 @@ export const generalLimiter = rateLimit({
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
   // Use a custom key generator that works with Cloudflare's CF-Connecting-IP header
   keyGenerator: req => {
-    // Cloudflare sets CF-Connecting-IP header with the real client IP
-    // Fall back to X-Forwarded-For if CF-Connecting-IP is not available
-    return (
+    // Get the real client IP from Cloudflare headers or fallback
+    const clientIp =
       req.headers["cf-connecting-ip"] ||
       req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
       req.ip ||
-      req.socket.remoteAddress
-    );
+      req.socket.remoteAddress;
+
+    // Use ipKeyGenerator helper to properly handle IPv6 addresses
+    // This applies a /56 subnet mask to IPv6 addresses to prevent bypass
+    return ipKeyGenerator(clientIp, 56);
   }
 });
 
@@ -33,13 +35,15 @@ export const strictLimiter = rateLimit({
   legacyHeaders: false,
   // Use a custom key generator that works with Cloudflare's CF-Connecting-IP header
   keyGenerator: req => {
-    // Cloudflare sets CF-Connecting-IP header with the real client IP
-    // Fall back to X-Forwarded-For if CF-Connecting-IP is not available
-    return (
+    // Get the real client IP from Cloudflare headers or fallback
+    const clientIp =
       req.headers["cf-connecting-ip"] ||
       req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
       req.ip ||
-      req.socket.remoteAddress
-    );
+      req.socket.remoteAddress;
+
+    // Use ipKeyGenerator helper to properly handle IPv6 addresses
+    // This applies a /56 subnet mask to IPv6 addresses to prevent bypass
+    return ipKeyGenerator(clientIp, 56);
   }
 });
