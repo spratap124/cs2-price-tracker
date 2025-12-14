@@ -34,6 +34,7 @@ const app = express();
 const allowedOrigins = [
   "https://suryapratap.in",
   "http://192.168.1.11:5173", // Local development
+  "https://cs2-api.suryapratap.in",
   // Add your Cloudflare Tunnel subdomain or API subdomain here
   // Example: "https://cs2-api.suryapratap.in"
   ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(",") : [])
