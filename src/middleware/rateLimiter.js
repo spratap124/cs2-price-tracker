@@ -11,13 +11,9 @@ export const generalLimiter = rateLimit({
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
   // Use a custom key generator that works with Cloudflare's CF-Connecting-IP header
   keyGenerator: req => {
-    // Get the real client IP from Cloudflare headers or fallback
-    const clientIp =
-      req.headers["cf-connecting-ip"] ||
-      req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
-      req.ip ||
-      req.socket.remoteAddress ||
-      "unknown"; // Fallback to ensure we always have a valid string
+    // Prefer CF-Connecting-IP (Cloudflare's header) if available, otherwise use req.ip
+    // req.ip is correctly set by Express when trust proxy is configured
+    const clientIp = req.headers["cf-connecting-ip"] || req.ip || "unknown";
 
     // Use ipKeyGenerator helper to properly handle IPv6 addresses
     // This applies a /56 subnet mask to IPv6 addresses to prevent bypass
@@ -36,13 +32,9 @@ export const strictLimiter = rateLimit({
   legacyHeaders: false,
   // Use a custom key generator that works with Cloudflare's CF-Connecting-IP header
   keyGenerator: req => {
-    // Get the real client IP from Cloudflare headers or fallback
-    const clientIp =
-      req.headers["cf-connecting-ip"] ||
-      req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
-      req.ip ||
-      req.socket.remoteAddress ||
-      "unknown"; // Fallback to ensure we always have a valid string
+    // Prefer CF-Connecting-IP (Cloudflare's header) if available, otherwise use req.ip
+    // req.ip is correctly set by Express when trust proxy is configured
+    const clientIp = req.headers["cf-connecting-ip"] || req.ip || "unknown";
 
     // Use ipKeyGenerator helper to properly handle IPv6 addresses
     // This applies a /56 subnet mask to IPv6 addresses to prevent bypass
