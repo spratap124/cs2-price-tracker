@@ -164,9 +164,29 @@ node --version  # Should show v20.x.x or higher
 
 ### 5. DNS Configuration on GoDaddy
 
+**⚠️ IMPORTANT: If your domain is already hosted elsewhere (e.g., Hostinger):**
+
+If `suryapratap.in` is already hosted on Hostinger or another hosting provider, you have these options:
+
+1. **Use Option 2 (Nginx + Subdomain)** - Recommended if you want to keep your existing Hostinger setup unchanged
+   - Keep your existing GoDaddy nameservers (Hostinger will continue working)
+   - Just add an A record for `cs2-api.suryapratap.in` pointing to your Raspberry Pi's public IP
+   - This won't affect your existing Hostinger hosting
+
+2. **Move domain to Cloudflare** (for Option 1 - Cloudflare Tunnel)
+   - Requires changing nameservers to Cloudflare
+   - You'll need to reconfigure your Hostinger setup through Cloudflare's DNS
+   - More complex but gives you Cloudflare Tunnel benefits
+
 Since your domain is managed on GoDaddy, you have two options:
 
-#### Option A: Use Cloudflare Nameservers (Recommended for Cloudflare Tunnel)
+#### Option A: Use Cloudflare Nameservers (Required for Cloudflare Tunnel)
+
+**⚠️ Warning:** This will change where your DNS is managed. If `suryapratap.in` is currently hosted on Hostinger:
+
+- Your Hostinger site will stop working unless you reconfigure it
+- You'll need to add DNS records in Cloudflare to point back to Hostinger
+- Consider using **Option B** instead if you want to keep Hostinger unchanged
 
 1. **In Cloudflare Dashboard:**
    - After adding your domain, Cloudflare will show you two nameservers
@@ -183,12 +203,20 @@ Since your domain is managed on GoDaddy, you have two options:
    - Click **"Save"**
    - **Note:** DNS propagation can take 24-48 hours, but usually happens within a few hours
 
-#### Option B: Keep GoDaddy Nameservers (For Subdomain Approach)
+3. **If moving from Hostinger:**
+   - After changing nameservers, you'll need to add DNS records in Cloudflare for your Hostinger site
+   - Contact Hostinger support to get the IP address or CNAME for your hosting
+   - Add appropriate A/CNAME records in Cloudflare DNS to restore your Hostinger site
 
-- Keep your existing GoDaddy nameservers
+#### Option B: Keep GoDaddy Nameservers (Recommended if domain is already hosted)
+
+- Keep your existing GoDaddy nameservers (Hostinger will continue working)
 - You'll add DNS records directly in GoDaddy (see Option 2 deployment section)
+- This is the safest option if you want to keep your existing hosting unchanged
 
-## Option 1: Cloudflare Tunnel (Recommended)
+## Option 1: Cloudflare Tunnel
+
+**⚠️ Note:** This option requires your domain to be in Cloudflare (nameservers changed to Cloudflare). If `suryapratap.in` is currently hosted on Hostinger and you want to keep it unchanged, use **Option 2** instead.
 
 Cloudflare Tunnel creates a secure connection between your Raspberry Pi and Cloudflare's network, allowing you to access your API without exposing your IP address or opening ports on your router.
 
@@ -198,10 +226,11 @@ Cloudflare Tunnel creates a secure connection between your Raspberry Pi and Clou
 
 ```bash
 # For Raspberry Pi 3 (ARM32 architecture)
-curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm -o /usr/local/bin/cloudflared
+# Download to /usr/local/bin (requires sudo)
+sudo curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm -o /usr/local/bin/cloudflared
 
 # Make it executable
-chmod +x /usr/local/bin/cloudflared
+sudo chmod +x /usr/local/bin/cloudflared
 
 # Verify installation
 cloudflared --version
@@ -1382,13 +1411,21 @@ You now have a complete deployment guide for your CS2 Price Tracker API on Raspb
 6. **Quick Reference** - Checklist and command reference
 
 **Recommended Path for Your Setup:**
-Since you own `suryapratap.in` and manage DNS on GoDaddy, I recommend **Option 1 (Cloudflare Tunnel)** because:
+Since you own `suryapratap.in` and manage DNS on GoDaddy:
 
-- No need to configure router port forwarding
-- More secure (no exposed ports)
-- Easier to set up
-- Free SSL certificate included
-- Works behind any firewall/NAT
+- **If `suryapratap.in` is NOT currently hosted elsewhere:** Use **Option 1 (Cloudflare Tunnel)** because:
+  - No need to configure router port forwarding
+  - More secure (no exposed ports)
+  - Easier to set up
+  - Free SSL certificate included
+  - Works behind any firewall/NAT
+
+- **If `suryapratap.in` IS already hosted (e.g., on Hostinger):** Use **Option 2 (Nginx + Subdomain)** because:
+  - Keep your existing hosting unchanged (no nameserver changes needed)
+  - Just add an A record for `cs2-api.suryapratap.in` in GoDaddy
+  - Your existing Hostinger site continues working normally
+  - Requires router port forwarding (ports 80 and 443)
+  - Uses Let's Encrypt for free SSL certificates
 
 **Next Steps:**
 
