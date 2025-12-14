@@ -788,8 +788,8 @@ pm2 --version
 # Make sure you're in the project directory
 cd ~/cs2-price-tracker
 
-# Start the application using ecosystem.config.js
-pm2 start ecosystem.config.js
+# Start the application using ecosystem.config.cjs
+pm2 start ecosystem.config.cjs
 
 # Check status
 pm2 status
@@ -1152,7 +1152,7 @@ pm2 restart cs2-price-tracker
 # Delete and recreate
 pm2 delete cs2-price-tracker
 cd ~/cs2-price-tracker
-pm2 start ecosystem.config.js
+pm2 start ecosystem.config.cjs
 pm2 save
 
 # Check memory usage
@@ -1257,7 +1257,7 @@ sudo nano /etc/dphys-swapfile
 sudo dphys-swapfile setup
 sudo dphys-swapfile swapon
 
-# Reduce PM2 memory limit in ecosystem.config.js
+# Reduce PM2 memory limit in ecosystem.config.cjs
 # Change max_memory_restart from "500M" to "300M"
 
 # Close unnecessary services
