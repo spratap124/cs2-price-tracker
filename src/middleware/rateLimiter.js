@@ -16,7 +16,8 @@ export const generalLimiter = rateLimit({
       req.headers["cf-connecting-ip"] ||
       req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
       req.ip ||
-      req.socket.remoteAddress;
+      req.socket.remoteAddress ||
+      "unknown"; // Fallback to ensure we always have a valid string
 
     // Use ipKeyGenerator helper to properly handle IPv6 addresses
     // This applies a /56 subnet mask to IPv6 addresses to prevent bypass
@@ -40,7 +41,8 @@ export const strictLimiter = rateLimit({
       req.headers["cf-connecting-ip"] ||
       req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
       req.ip ||
-      req.socket.remoteAddress;
+      req.socket.remoteAddress ||
+      "unknown"; // Fallback to ensure we always have a valid string
 
     // Use ipKeyGenerator helper to properly handle IPv6 addresses
     // This applies a /56 subnet mask to IPv6 addresses to prevent bypass
