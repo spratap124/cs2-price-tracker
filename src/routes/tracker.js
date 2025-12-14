@@ -2,6 +2,7 @@ import express from "express";
 import Tracker from "../models/tracker.js";
 import User from "../models/user.js";
 import { getSkinPrice, getSkinImageUrl } from "../steam/steam.js";
+import { strictLimiter } from "../middleware/rateLimiter.js";
 
 const router = express.Router();
 
@@ -31,7 +32,7 @@ router.get("/", async (req, res) => {
 
 // Create tracker
 // POST /track
-router.post("/", async (req, res) => {
+router.post("/", strictLimiter, async (req, res) => {
   try {
     const { userId, skinName, interest, targetDown, targetUp } = req.body;
 
@@ -110,7 +111,7 @@ router.post("/", async (req, res) => {
 
 // Delete tracker
 // DELETE /track/:trackerId?userId=:userId
-router.delete("/:trackerId", async (req, res) => {
+router.delete("/:trackerId", strictLimiter, async (req, res) => {
   try {
     const { trackerId } = req.params;
     const { userId } = req.query;
