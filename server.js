@@ -39,6 +39,7 @@ app.set("trust proxy", 1);
 // CORS configuration - allows requests from frontend domain and local development
 const allowedOrigins = [
   "https://suryapratap.in",
+  "https://www.suryapratap.in", // www variant
   "http://192.168.1.11:5173", // Local development
   "https://cs2-api.suryapratap.in",
   // Add your Cloudflare Tunnel subdomain or API subdomain here
@@ -59,6 +60,8 @@ app.use(
       }
     },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
     optionsSuccessStatus: 200
   })
 );
