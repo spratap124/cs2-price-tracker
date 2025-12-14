@@ -30,6 +30,11 @@ if (envResult.error && envResult.error.code === "ENOENT") {
 }
 
 const app = express();
+
+// Trust proxy - required when behind Cloudflare Tunnel or other reverse proxies
+// This allows Express to properly read X-Forwarded-For headers for rate limiting
+app.set("trust proxy", true);
+
 // CORS configuration - allows requests from frontend domain and local development
 const allowedOrigins = [
   "https://suryapratap.in",
