@@ -6,23 +6,49 @@ package-lock.json
 .env
 .env.local
 .env.*.local
+.env.development
+.env.production
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pm2-error.log
+pm2-out.log
+lerna-debug.log*
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
 # IDE
-# .vscode/  # Keep .vscode/settings.json for project formatting config
+.vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# OS
-.DS_Store
-Thumbs.db
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
 
-# Logs
-*.log
-npm-debug.log*
+# Testing
+coverage/
+.nyc_output/
 
 # Temporary files
+tmp/
+temp/
 *.tmp
-*.temp
 
+# Cloudflare Tunnel credentials
+.cloudflared/
+**/cloudflared/*.json

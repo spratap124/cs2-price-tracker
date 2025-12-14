@@ -61,11 +61,13 @@ DEBUG_STEAM=false
 ### Rate Limiting
 
 The application includes built-in rate limiting with:
+
 - Automatic retry with exponential backoff
 - 5-minute price caching to reduce redundant API calls
 - Configurable request intervals
 
 If you're still experiencing 429 (rate limit) errors:
+
 1. Increase `STEAM_API_MIN_INTERVAL_MS` to 10000 (10 seconds) or higher
 2. Increase `CHECK_INTERVAL_MINUTES` to reduce frequency
 3. Consider using **Skinport API** as an alternative (see below)
@@ -84,11 +86,29 @@ You can use **Skinport API** instead of (or alongside) Steam API for more reliab
 3. See [SKINPORT_SETUP.md](SKINPORT_SETUP.md) for detailed setup instructions
 
 **Benefits:**
+
 - ✅ Official API with documented rate limits (8 requests/5min)
 - ✅ More reliable than Steam's unofficial endpoints
 - ✅ Clean JSON responses (no HTML parsing)
 
 **Note:** Skinport prices reflect the Skinport marketplace, which may differ from Steam Market prices.
+
+## Deployment
+
+### Raspberry Pi Deployment
+
+To deploy this application on a Raspberry Pi and make it accessible from the internet:
+
+1. See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed deployment instructions
+2. See [QUICK_START.md](QUICK_START.md) for a quick setup guide
+3. See [FRONTEND_INTEGRATION.md](FRONTEND_INTEGRATION.md) for frontend integration examples
+
+The deployment guide covers:
+
+- Setting up Cloudflare Tunnel (free, no domain needed for backend)
+- Using a subdomain (if you control DNS)
+- PM2 process management
+- Security best practices
 
 ## Notes
 

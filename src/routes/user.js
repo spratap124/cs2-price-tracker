@@ -1,5 +1,6 @@
 import express from "express";
 import User from "../models/user.js";
+import { strictLimiter } from "../middleware/rateLimiter.js";
 
 const router = express.Router();
 
@@ -9,13 +10,14 @@ function isValidDiscordWebhook(url) {
     return false;
   }
   // Basic validation: should start with https://discord.com/api/webhooks/ or discord.com/api/webhooks/
-  const discordWebhookPattern = /^https?:\/\/(discord\.com|discordapp\.com)\/api\/webhooks\/\d+\/[a-zA-Z0-9_-]+$/;
+  const discordWebhookPattern =
+    /^https?:\/\/(discord\.com|discordapp\.com)\/api\/webhooks\/\d+\/[a-zA-Z0-9_-]+$/;
   return discordWebhookPattern.test(url);
 }
 
 // Create User
 // POST /user
-router.post("/", async (req, res) => {
+router.post("/", strictLimiter, async (req, res) => {
   try {
     const { discordWebhook } = req.body;
 
@@ -45,6 +47,49 @@ router.post("/", async (req, res) => {
     });
   } catch (err) {
     console.error("Error creating user:", err);
+    res.status(500);
+    res.json({
+      error: "Internal server error"
+    });
+  }
+});
+
+// Recover User Account
+// POST /user/recover
+router.post("/recover", strictLimiter, async (req, res) => {
+  try {
+    const { discordWebhook } = req.body;
+
+    if (!discordWebhook) {
+      res.status(400);
+      return res.json({
+        error: "discordWebhook is required"
+      });
+    }
+
+    if (!isValidDiscordWebhook(discordWebhook)) {
+      res.status(400);
+      return res.json({
+        error: "Invalid webhook URL format"
+      });
+    }
+
+    const user = await User.findOne({ discordWebhook });
+
+    if (!user) {
+      res.status(404);
+      return res.json({
+        error: "No user found with this webhook"
+      });
+    }
+
+    res.json({
+      userId: user.userId,
+      discordWebhook: user.discordWebhook,
+      createdAt: user.createdAt
+    });
+  } catch (err) {
+    console.error("Error recovering user:", err);
     res.status(500);
     res.json({
       error: "Internal server error"
@@ -83,7 +128,7 @@ router.get("/:userId", async (req, res) => {
 
 // Update User
 // PUT /user/:userId
-router.put("/:userId", async (req, res) => {
+router.put("/:userId", strictLimiter, async (req, res) => {
   try {
     const { userId } = req.params;
     const { discordWebhook } = req.body;
@@ -129,48 +174,4 @@ router.put("/:userId", async (req, res) => {
   }
 });
 
-// Recover User Account
-// POST /user/recover
-router.post("/recover", async (req, res) => {
-  try {
-    const { discordWebhook } = req.body;
-
-    if (!discordWebhook) {
-      res.status(400);
-      return res.json({
-        error: "discordWebhook is required"
-      });
-    }
-
-    if (!isValidDiscordWebhook(discordWebhook)) {
-      res.status(400);
-      return res.json({
-        error: "Invalid webhook URL format"
-      });
-    }
-
-    const user = await User.findOne({ discordWebhook });
-
-    if (!user) {
-      res.status(404);
-      return res.json({
-        error: "No user found with this webhook"
-      });
-    }
-
-    res.json({
-      userId: user.userId,
-      discordWebhook: user.discordWebhook,
-      createdAt: user.createdAt
-    });
-  } catch (err) {
-    console.error("Error recovering user:", err);
-    res.status(500);
-    res.json({
-      error: "Internal server error"
-    });
-  }
-});
-
 export default router;
-
