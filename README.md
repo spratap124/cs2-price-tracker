@@ -71,7 +71,7 @@ If you're still experiencing 429 (rate limit) errors:
 1. Increase `STEAM_API_MIN_INTERVAL_MS` to 10000 (10 seconds) or higher
 2. Increase `CHECK_INTERVAL_MINUTES` to reduce frequency
 3. Consider using **Skinport API** as an alternative (see below)
-4. See [API_ALTERNATIVES.md](API_ALTERNATIVES.md) for more options
+4. See [docs/API_ALTERNATIVES.md](docs/API_ALTERNATIVES.md) for more options
 
 ### Alternative: Skinport API
 
@@ -83,7 +83,7 @@ You can use **Skinport API** instead of (or alongside) Steam API for more reliab
    PRICE_PROVIDER=skinport
    SKINPORT_API_KEY=your_api_key_here
    ```
-3. See [SKINPORT_SETUP.md](SKINPORT_SETUP.md) for detailed setup instructions
+3. See [docs/SKINPORT_SETUP.md](docs/SKINPORT_SETUP.md) for detailed setup instructions
 
 **Benefits:**
 
@@ -99,9 +99,9 @@ You can use **Skinport API** instead of (or alongside) Steam API for more reliab
 
 To deploy this application on a Raspberry Pi and make it accessible from the internet:
 
-1. See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed deployment instructions
-2. See [QUICK_START.md](QUICK_START.md) for a quick setup guide
-3. See [FRONTEND_INTEGRATION.md](FRONTEND_INTEGRATION.md) for frontend integration examples
+1. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed deployment instructions
+2. See [docs/QUICK_START.md](docs/QUICK_START.md) for a quick setup guide
+3. See [docs/FRONTEND_INTEGRATION.md](docs/FRONTEND_INTEGRATION.md) for frontend integration examples
 
 The deployment guide covers:
 
@@ -114,5 +114,5 @@ The deployment guide covers:
 
 - Uses Discord webhook for alerts by default. Replace `sendAlert` in `src/alert/alert.js` to support other transports.
 - The application automatically handles rate limiting with retry logic and caching.
-- For information about alternative APIs and solutions, see [API_ALTERNATIVES.md](API_ALTERNATIVES.md).
-- For Skinport API integration, see [SKINPORT_SETUP.md](SKINPORT_SETUP.md) and [SKINPORT_API.md](SKINPORT_API.md).
+- For information about alternative APIs and solutions, see [docs/API_ALTERNATIVES.md](docs/API_ALTERNATIVES.md).
+- For Skinport API integration, see [docs/SKINPORT_SETUP.md](docs/SKINPORT_SETUP.md) and [docs/SKINPORT_API.md](docs/SKINPORT_API.md).

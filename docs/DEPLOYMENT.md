@@ -69,25 +69,25 @@ sudo reboot
 
 Wait for the Pi to reboot, then SSH back in.
 
-### 2. Install Node.js (v18 or higher)
+### 2. Install Node.js (v20 LTS or higher)
 
 **For Raspberry Pi 3 (ARM32):**
 
 ```bash
-# Download Node.js v18.x for ARM32
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+# Download Node.js v20.x LTS for ARM32
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt-get install -y nodejs
 
 # Verify installation
-node --version  # Should show v18.x.x or higher
-npm --version   # Should show 9.x.x or higher
+node --version  # Should show v20.x.x or higher
+npm --version   # Should show 10.x.x or higher
 ```
 
 **If the above doesn't work, use NodeSource's ARM32 repository:**
 
 ```bash
 # For ARM32 (Raspberry Pi 3)
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt-get install -y nodejs
 ```
 
@@ -100,13 +100,15 @@ curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
 # Reload shell configuration
 source ~/.bashrc
 
-# Install Node.js v18
-nvm install 18
-nvm use 18
-nvm alias default 18
+# Install Node.js v20 LTS (or latest LTS)
+nvm install --lts
+# OR specify version explicitly:
+# nvm install 20
+nvm use --lts
+nvm alias default lts/*
 
 # Verify
-node --version
+node --version  # Should show v20.x.x or higher
 ```
 
 ### 3. Set Up MongoDB Atlas (If Not Already Done)
@@ -1285,7 +1287,7 @@ Use this checklist to track your deployment progress:
 
 - [ ] Raspberry Pi 3 set up with Raspberry Pi OS
 - [ ] Raspberry Pi connected to network and accessible via SSH
-- [ ] Node.js v18+ installed (`node --version`)
+- [ ] Node.js v20 LTS or higher installed (`node --version`)
 - [ ] MongoDB Atlas account created
 - [ ] MongoDB Atlas cluster created and connection string obtained
 - [ ] MongoDB Atlas IP whitelist configured (include Pi's public IP or 0.0.0.0/0)
