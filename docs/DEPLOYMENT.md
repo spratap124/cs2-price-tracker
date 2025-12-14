@@ -15,7 +15,7 @@ This comprehensive guide will help you deploy the CS2 Price Tracker API on a Ras
 5. Click **"Choose Storage"** → Select your microSD card
 6. Click the gear icon (⚙️) to configure:
    - Enable SSH: Check **"Enable SSH"**
-   - Set username: `pi` (or your preferred username)
+   - Set username: `thakur-pi` (or your preferred username)
    - Set password: Create a strong password
    - Configure wireless LAN: Enter your Wi-Fi SSID and password
    - Set locale: Choose your timezone
@@ -45,13 +45,13 @@ hostname -I
 **On Windows:**
 
 - Use **PuTTY** or **Windows Terminal**
-- Open terminal and type: `ssh pi@<YOUR_PI_IP_ADDRESS>`
-- Example: `ssh pi@192.168.1.100`
+- Open terminal and type: `ssh thakur-pi@<YOUR_PI_IP_ADDRESS>`
+- Example: `ssh thakur-pi@192.168.1.100`
 
 **On Mac/Linux:**
 
 ```bash
-ssh pi@<YOUR_PI_IP_ADDRESS>
+ssh thakur-pi@<YOUR_PI_IP_ADDRESS>
 ```
 
 **First connection:**
@@ -291,7 +291,7 @@ sudo nano /etc/cloudflared/config.yml
 
 ```yaml
 tunnel: <YOUR_TUNNEL_ID>
-credentials-file: /home/pi/.cloudflared/<YOUR_TUNNEL_ID>.json
+credentials-file: /home/thakur-pi/.cloudflared/<YOUR_TUNNEL_ID>.json
 
 ingress:
   - hostname: cs2-api.suryapratap.in
@@ -299,19 +299,24 @@ ingress:
   - service: http_status:404
 ```
 
+**Important:**
+
+- Replace `<YOUR_TUNNEL_ID>` with your actual tunnel ID (e.g., `f5e99327-3ff9-4562-82a6-0e48d5029d2e`)
+- The credentials file path uses `thakur-pi` as the username. If your username is different, replace `thakur-pi` with your actual username.
+
 **Save and exit:**
 
 - Press `Ctrl + X`
 - Press `Y` to confirm
 - Press `Enter` to save
 
-**Note:** The credentials file path should match where Cloudflare saved it. Check with:
+**Verify the credentials file path:**
 
 ```bash
 ls -la ~/.cloudflared/
 ```
 
-If the file has a different name, update the `credentials-file` path accordingly.
+The credentials file will be named `<YOUR_TUNNEL_ID>.json`. Make sure the path in `config.yml` matches your actual home directory (uses `thakur-pi` by default).
 
 ### Step 5: Create DNS Record
 
@@ -618,14 +623,14 @@ cd cs2-price-tracker
 cd /path/to/cs2-price-tracker
 
 # Transfer files to Raspberry Pi
-scp -r . pi@<YOUR_PI_IP>:~/cs2-price-tracker
+scp -r . thakur-pi@<YOUR_PI_IP>:~/cs2-price-tracker
 ```
 
 **On Windows:**
 
 - Use **WinSCP** or **FileZilla**
 - Connect to your Pi via SFTP
-- Upload the project folder to `/home/pi/cs2-price-tracker`
+- Upload the project folder to `~/cs2-price-tracker` (or `/home/thakur-pi/cs2-price-tracker`)
 
 **Option C: Using USB Drive**
 
@@ -634,11 +639,11 @@ scp -r . pi@<YOUR_PI_IP>:~/cs2-price-tracker
 3. Mount and copy files:
 
 ```bash
-# Find USB drive (usually /media/pi/...)
-ls /media/pi/
+# Find USB drive (usually /media/thakur-pi/...)
+ls /media/thakur-pi/
 
 # Copy files
-cp -r /media/pi/USB_NAME/cs2-price-tracker ~/cs2-price-tracker
+cp -r /media/thakur-pi/USB_NAME/cs2-price-tracker ~/cs2-price-tracker
 cd ~/cs2-price-tracker
 ```
 
@@ -825,15 +830,18 @@ pm2 startup
 ```
 [PM2] Init System found: systemd
 [PM2] To setup the Startup Script, copy/paste the following command:
-sudo env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u pi --hp /home/pi
+sudo env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u thakur-pi --hp /home/thakur-pi
 ```
 
 **Run the command shown in the output:**
 
 ```bash
 # Copy and run the exact command from the output above
-sudo env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u pi --hp /home/pi
+# The command will show your actual username and home directory
+sudo env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u thakur-pi --hp /home/thakur-pi
 ```
+
+**Note:** PM2 will automatically detect your username. If it shows a different username in the output, use that instead.
 
 **Expected output:**
 
@@ -979,7 +987,7 @@ ls -la .env*
 ### 3. Change Default SSH Password
 
 ```bash
-# Change password for pi user
+# Change password for thakur-pi user
 passwd
 
 # Or create a new user with sudo privileges
@@ -1164,7 +1172,7 @@ pm2 startup
 # Copy and run the sudo command shown
 
 # Verify startup script
-sudo systemctl status pm2-pi
+sudo systemctl status pm2-thakur-pi
 
 # Manually save process list
 pm2 save
