@@ -32,8 +32,9 @@ if (envResult.error && envResult.error.code === "ENOENT") {
 const app = express();
 
 // Trust proxy - required when behind Cloudflare Tunnel or other reverse proxies
+// Set to 1 to trust only the first proxy (Cloudflare), which is more secure
 // This allows Express to properly read X-Forwarded-For headers for rate limiting
-app.set("trust proxy", true);
+app.set("trust proxy", 1);
 
 // CORS configuration - allows requests from frontend domain and local development
 const allowedOrigins = [
