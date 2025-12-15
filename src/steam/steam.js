@@ -25,7 +25,7 @@ let consecutive429Count = 0;
  */
 async function waitForRateLimit() {
   const now = Date.now();
-  
+
   // First, check if we're in a cooldown period (after 429 errors)
   if (now < cooldownUntil) {
     const cooldownWait = cooldownUntil - now;
@@ -34,10 +34,10 @@ async function waitForRateLimit() {
     }
     await new Promise(resolve => setTimeout(resolve, cooldownWait));
   }
-  
+
   // Then check minimum interval between requests
   const timeSinceLastRequest = now - lastRequestTime;
-  
+
   if (timeSinceLastRequest < MIN_REQUEST_INTERVAL_MS) {
     const waitTime = MIN_REQUEST_INTERVAL_MS - timeSinceLastRequest;
     if (process.env.DEBUG_STEAM === "true") {
@@ -45,7 +45,7 @@ async function waitForRateLimit() {
     }
     await new Promise(resolve => setTimeout(resolve, waitTime));
   }
-  
+
   lastRequestTime = Date.now();
 }
 
@@ -54,18 +54,18 @@ async function waitForRateLimit() {
  */
 function handle429Error() {
   consecutive429Count++;
-  
+
   // Exponential cooldown: 30s, 60s, 120s, etc.
   const cooldownDuration = Math.min(
     Math.pow(2, consecutive429Count - 1) * 30000, // 30s, 60s, 120s, 240s...
     300000 // Max 5 minutes
   );
-  
+
   cooldownUntil = Date.now() + cooldownDuration;
-  
+
   console.warn(
     `[Steam API] 429 error detected (count: ${consecutive429Count}). ` +
-    `Entering cooldown for ${cooldownDuration / 1000}s...`
+      `Entering cooldown for ${cooldownDuration / 1000}s...`
   );
 }
 
@@ -114,30 +114,30 @@ export async function getSkinPrice(marketHashName, useCache = true) {
       const res = await axios.get(url, {
         headers: {
           "User-Agent": USER_AGENT,
-          "Accept": "application/json",
+          Accept: "application/json",
           "Accept-Language": "en-US,en;q=0.9"
         },
         timeout: 10000, // 10 second timeout
-        validateStatus: (status) => status < 500 // Don't throw on 429, handle it manually
+        validateStatus: status => status < 500 // Don't throw on 429, handle it manually
       });
 
       // Handle rate limiting (429)
       if (res.status === 429) {
         // Set cooldown period
         handle429Error();
-        
+
         // Use retry-after header if available, otherwise use exponential backoff
-        const retryAfter = res.headers["retry-after"] 
-          ? parseInt(res.headers["retry-after"]) * 1000 
+        const retryAfter = res.headers["retry-after"]
+          ? parseInt(res.headers["retry-after"]) * 1000
           : Math.pow(2, attempt) * 10000; // Exponential backoff: 20s, 40s, 80s (more conservative)
-        
+
         // Ensure we wait at least as long as the cooldown period
         const waitTime = Math.max(retryAfter, cooldownUntil - Date.now());
-        
+
         if (attempt < maxRetries) {
           console.warn(
             `[Steam API] Rate limited (429) for "${marketHashName}". ` +
-            `Attempt ${attempt}/${maxRetries}. Waiting ${Math.ceil(waitTime / 1000)}s before retry...`
+              `Attempt ${attempt}/${maxRetries}. Waiting ${Math.ceil(waitTime / 1000)}s before retry...`
           );
           await new Promise(resolve => setTimeout(resolve, waitTime));
           // Update lastRequestTime to account for the wait
@@ -216,29 +216,28 @@ export async function getSkinPrice(marketHashName, useCache = true) {
       }
 
       return value;
-
     } catch (err) {
       lastError = err;
-      
+
       // Handle axios errors
       if (err.response) {
         const status = err.response.status;
-        
+
         if (status === 429) {
           // Set cooldown period
           handle429Error();
-          
-          const retryAfter = err.response.headers["retry-after"] 
-            ? parseInt(err.response.headers["retry-after"]) * 1000 
+
+          const retryAfter = err.response.headers["retry-after"]
+            ? parseInt(err.response.headers["retry-after"]) * 1000
             : Math.pow(2, attempt) * 10000; // More conservative: 20s, 40s, 80s
-          
+
           // Ensure we wait at least as long as the cooldown period
           const waitTime = Math.max(retryAfter, cooldownUntil - Date.now());
-          
+
           if (attempt < maxRetries) {
             console.warn(
               `[Steam API] Rate limited (429) for "${marketHashName}". ` +
-              `Attempt ${attempt}/${maxRetries}. Waiting ${Math.ceil(waitTime / 1000)}s before retry...`
+                `Attempt ${attempt}/${maxRetries}. Waiting ${Math.ceil(waitTime / 1000)}s before retry...`
             );
             await new Promise(resolve => setTimeout(resolve, waitTime));
             // Update lastRequestTime to account for the wait
@@ -250,16 +249,19 @@ export async function getSkinPrice(marketHashName, useCache = true) {
           const waitTime = Math.pow(2, attempt) * 2000;
           console.warn(
             `[Steam API] Server error (${status}) for "${marketHashName}". ` +
-            `Attempt ${attempt}/${maxRetries}. Waiting ${waitTime / 1000}s before retry...`
+              `Attempt ${attempt}/${maxRetries}. Waiting ${waitTime / 1000}s before retry...`
           );
           await new Promise(resolve => setTimeout(resolve, waitTime));
           continue;
         }
       }
-      
+
       // If we're here and it's the last attempt, throw the error
       if (attempt === maxRetries) {
-        console.error(`[Steam API] Failed to get price for "${marketHashName}" after ${maxRetries} attempts:`, err.message);
+        console.error(
+          `[Steam API] Failed to get price for "${marketHashName}" after ${maxRetries} attempts:`,
+          err.message
+        );
         throw err;
       }
     }

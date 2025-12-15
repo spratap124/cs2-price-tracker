@@ -58,29 +58,43 @@ router.post("/", strictLimiter, async (req, res) => {
 // POST /user/recover
 router.post("/recover", strictLimiter, async (req, res) => {
   try {
-    const { discordWebhook } = req.body;
+    const { discordWebhook, userId } = req.body;
 
-    if (!discordWebhook) {
+    // At least one identifier must be provided
+    if (!discordWebhook && !userId) {
       res.status(400);
       return res.json({
-        error: "discordWebhook is required"
+        error: "Either discordWebhook or userId is required"
       });
     }
 
-    if (!isValidDiscordWebhook(discordWebhook)) {
-      res.status(400);
-      return res.json({
-        error: "Invalid webhook URL format"
-      });
-    }
+    let user;
 
-    const user = await User.findOne({ discordWebhook });
+    // If userId is provided, search by userId (prioritize userId if both are provided)
+    if (userId) {
+      user = await User.findOne({ userId });
+      if (!user) {
+        res.status(404);
+        return res.json({
+          error: "No user found with this userId"
+        });
+      }
+    } else if (discordWebhook) {
+      // Validate webhook format if provided
+      if (!isValidDiscordWebhook(discordWebhook)) {
+        res.status(400);
+        return res.json({
+          error: "Invalid webhook URL format"
+        });
+      }
 
-    if (!user) {
-      res.status(404);
-      return res.json({
-        error: "No user found with this webhook"
-      });
+      user = await User.findOne({ discordWebhook });
+      if (!user) {
+        res.status(404);
+        return res.json({
+          error: "No user found with this webhook"
+        });
+      }
     }
 
     res.json({
