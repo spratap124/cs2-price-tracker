@@ -109,6 +109,115 @@ router.post("/", strictLimiter, async (req, res) => {
   }
 });
 
+// Update tracker
+// PUT /track/:trackerId?userId=:userId
+router.put("/:trackerId", strictLimiter, async (req, res) => {
+  try {
+    const { trackerId } = req.params;
+    const { userId } = req.query;
+    const { interest, targetDown, targetUp, skinName } = req.body;
+
+    if (!userId) {
+      res.status(400);
+      return res.json({
+        error: "userId query parameter is required"
+      });
+    }
+
+    const tracker = await Tracker.findById(trackerId);
+
+    if (!tracker) {
+      res.status(404);
+      return res.json({
+        error: "Tracker does not exist"
+      });
+    }
+
+    // Verify ownership
+    if (tracker.userId !== userId) {
+      res.status(403);
+      return res.json({
+        error: "Tracker does not belong to user"
+      });
+    }
+
+    // Build update object with only provided fields
+    const updateData = {};
+    if (interest !== undefined) {
+      if (!["buy", "sell", "both"].includes(interest)) {
+        res.status(400);
+        return res.json({
+          error: "interest must be one of: buy, sell, both"
+        });
+      }
+      updateData.interest = interest;
+    }
+    if (targetDown !== undefined) {
+      updateData.targetDown = targetDown !== null ? targetDown : null;
+    }
+    if (targetUp !== undefined) {
+      updateData.targetUp = targetUp !== null ? targetUp : null;
+    }
+    if (skinName !== undefined) {
+      if (!skinName || skinName.trim() === "") {
+        res.status(400);
+        return res.json({
+          error: "skinName cannot be empty"
+        });
+      }
+      updateData.skinName = skinName;
+
+      // If skinName is updated, try to fetch new price and image
+      try {
+        const p = await getSkinPrice(skinName);
+        updateData.lastKnownPrice = p;
+      } catch (e) {
+        // ignore fetch errors
+      }
+
+      try {
+        const imgUrl = await getSkinImageUrl(skinName);
+        updateData.imageUrl = imgUrl;
+      } catch (e) {
+        // ignore fetch errors
+      }
+    }
+
+    // If no fields to update, return error
+    if (Object.keys(updateData).length === 0) {
+      res.status(400);
+      return res.json({
+        error: "No fields provided to update"
+      });
+    }
+
+    const updatedTracker = await Tracker.findByIdAndUpdate(trackerId, updateData, {
+      new: true,
+      runValidators: true
+    });
+
+    res.json({
+      _id: updatedTracker._id,
+      userId: updatedTracker.userId,
+      skinName: updatedTracker.skinName,
+      interest: updatedTracker.interest,
+      targetDown: updatedTracker.targetDown,
+      targetUp: updatedTracker.targetUp,
+      lastKnownPrice: updatedTracker.lastKnownPrice,
+      downAlertSent: updatedTracker.downAlertSent,
+      upAlertSent: updatedTracker.upAlertSent,
+      createdAt: updatedTracker.createdAt,
+      updatedAt: updatedTracker.updatedAt
+    });
+  } catch (err) {
+    console.error("Error updating tracker:", err);
+    res.status(500);
+    res.json({
+      error: "Internal server error"
+    });
+  }
+});
+
 // Delete tracker
 // DELETE /track/:trackerId?userId=:userId
 router.delete("/:trackerId", strictLimiter, async (req, res) => {

@@ -165,6 +165,44 @@
           "response": []
         },
         {
+          "name": "Update Tracker",
+          "request": {
+            "method": "PUT",
+            "header": [{
+              "key": "Content-Type",
+              "value": "application/json",
+              "type": "text"
+            }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"interest\": \"both\",\n  \"targetDown\": 1800,\n  \"targetUp\": 2500\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/track/:trackerId?userId=:userId",
+              "host": ["{{baseUrl}}"],
+              "path": ["track", ":trackerId"],
+              "query": [{
+                "key": "userId",
+                "value": "user_id_here",
+                "description": "The user ID to verify ownership",
+                "disabled": false
+              }],
+              "variable": [{
+                "key": "trackerId",
+                "value": "tracker_id_here",
+                "description": "MongoDB ObjectId of the tracker to update"
+              }]
+            },
+            "description": "Updates an existing tracker. You can update any combination of fields. If skinName is updated, the system will automatically fetch the new price and image URL.\n\n**Path Parameters:**\n- `trackerId` (required): Tracker ID to update\n\n**Query Parameters:**\n- `userId` (required): The user ID to verify ownership\n\n**Request Body (all fields optional):**\n- `interest` (optional): User's interest - \"buy\", \"sell\", or \"both\"\n- `targetDown` (optional): Price threshold for buying alerts (price drops below this). Set to null to remove.\n- `targetUp` (optional): Price threshold for selling alerts (price rises above this). Set to null to remove.\n- `skinName` (optional): Full name of the CS2 skin. If updated, price and image will be refreshed automatically.\n\n**Response:**\n- `_id`: Tracker ID\n- `userId`: User ID\n- `skinName`: Full skin name\n- `interest`: Interest type\n- `targetDown`: Down target price\n- `targetUp`: Up target price\n- `lastKnownPrice`: Last known price\n- `downAlertSent`: Alert status flag\n- `upAlertSent`: Alert status flag\n- `createdAt`: Creation timestamp\n- `updatedAt`: Update timestamp\n\n**Status Codes:**\n- 200 OK - Tracker updated successfully\n- 400 Bad Request - Invalid request data or no fields provided to update\n- 403 Forbidden - Tracker does not belong to user\n- 404 Not Found - Tracker does not exist\n- 500 Internal Server Error - Server error"
+          },
+          "response": []
+        },
+        {
           "name": "Delete Tracker",
           "request": {
             "method": "DELETE",
@@ -190,7 +228,7 @@
           "response": []
         }
       ],
-      "description": "Tracker management endpoints for creating, retrieving, and deleting price trackers."
+      "description": "Tracker management endpoints for creating, retrieving, updating, and deleting price trackers."
     },
     {
       "name": "Utility",
