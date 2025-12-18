@@ -80,6 +80,19 @@ export default function startCron() {
           // update last known price
           item.lastKnownPrice = price;
 
+          // Add to price history (keep last 10)
+          if (!item.priceHistory) {
+            item.priceHistory = [];
+          }
+          item.priceHistory.push({
+            price: price,
+            timestamp: new Date()
+          });
+          // Keep only the last 10 prices
+          if (item.priceHistory.length > 10) {
+            item.priceHistory = item.priceHistory.slice(-10);
+          }
+
           const interest = item.interest || "buy"; // Default to "buy" for backward compatibility
 
           // Handle BUY interest

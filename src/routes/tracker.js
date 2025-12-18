@@ -84,6 +84,7 @@ router.post("/", strictLimiter, async (req, res) => {
       targetDown: targetDown != null ? targetDown : null,
       targetUp: targetUp != null ? targetUp : null,
       lastKnownPrice: currentPrice,
+      priceHistory: currentPrice != null ? [{ price: currentPrice, timestamp: new Date() }] : [],
       imageUrl: imageUrl
     });
 
@@ -171,6 +172,8 @@ router.put("/:trackerId", strictLimiter, async (req, res) => {
       try {
         const p = await getSkinPrice(skinName);
         updateData.lastKnownPrice = p;
+        // Reset price history with new price when skin name changes
+        updateData.priceHistory = p != null ? [{ price: p, timestamp: new Date() }] : [];
       } catch (e) {
         // ignore fetch errors
       }
