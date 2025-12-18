@@ -27,6 +27,21 @@ const TrackerSchema = new mongoose.Schema({
     type: Number,
     default: null
   },
+  priceHistory: {
+    type: [
+      {
+        price: {
+          type: Number,
+          required: true
+        },
+        timestamp: {
+          type: Date,
+          default: Date.now
+        }
+      }
+    ],
+    default: []
+  },
   imageUrl: {
     type: String,
     default: null
