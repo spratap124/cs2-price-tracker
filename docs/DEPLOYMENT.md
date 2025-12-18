@@ -1038,10 +1038,298 @@ Make sure only your frontend domain is allowed. Check `server.js` for the `allow
 
 ## Monitoring and Maintenance
 
+### Quick System Monitoring
+
+**Use the built-in monitoring script:**
+
+```bash
+cd ~/cs2-price-tracker
+./monitor-pi.sh
+```
+
+This script displays:
+
+- System information (hostname, uptime, date/time)
+- CPU information and usage
+- Memory usage
+- Disk usage
+- CPU temperature (Raspberry Pi specific)
+- Network information (IP address)
+- PM2 application status
+- Service status (Cloudflare Tunnel, MongoDB)
+- Port status (checking if port 3001 is listening)
+- System load average
+- Recent application logs
+
+**Watch mode (updates every 5 seconds):**
+
+```bash
+watch -n 5 ./monitor-pi.sh
+```
+
+### Remote System Status API
+
+**Get system status via API endpoint:**
+
+```bash
+# From your local computer
+curl https://cs2-api.suryapratap.in/system-status
+
+# Or from the Pi itself
+curl http://localhost:3001/system-status
+```
+
+**Response includes:**
+
+- System information (hostname, platform, architecture)
+- Node.js version
+- System and process uptime
+- Memory usage (total, free, used, percentage)
+- CPU information (cores, model, load average)
+- Network interfaces and IP addresses
+- Process memory usage (RSS, heap, external)
+- PM2 application status (if available)
+- Database connection status
+- Health status
+
+**Example response:**
+
+```json
+{
+  "system": {
+    "hostname": "raspberrypi",
+    "platform": "linux",
+    "arch": "arm",
+    "nodeVersion": "v20.10.0",
+    "uptime": {
+      "system": 86400,
+      "process": 3600,
+      "formatted": {
+        "system": "1d 0h 0m 0s",
+        "process": "1h 0m 0s"
+      }
+    },
+    "memory": {
+      "total": 1024000000,
+      "free": 512000000,
+      "used": 512000000,
+      "usagePercent": "50.00",
+      "formatted": {
+        "total": "976.56 MB",
+        "free": "488.28 MB",
+        "used": "488.28 MB"
+      }
+    },
+    "cpu": {
+      "cores": 4,
+      "model": "ARMv7 Processor rev 4 (v7l)",
+      "loadAverage": [0.5, 0.6, 0.7]
+    },
+    "network": {
+      "interfaces": {
+        "wlan0": [
+          {
+            "address": "192.168.1.100",
+            "netmask": "255.255.255.0",
+            "mac": "b8:27:eb:xx:xx:xx"
+          }
+        ]
+      }
+    },
+    "process": {
+      "pid": 1234,
+      "memoryUsage": {
+        "rss": 52428800,
+        "heapTotal": 20971520,
+        "heapUsed": 15728640,
+        "external": 1048576,
+        "formatted": {
+          "rss": "50 MB",
+          "heapTotal": "20 MB",
+          "heapUsed": "15 MB",
+          "external": "1 MB"
+        }
+      }
+    },
+    "timestamp": "2025-12-18T05:30:00.000Z"
+  },
+  "application": {
+    "name": "cs2-price-tracker",
+    "status": "online",
+    "uptime": 3600000,
+    "restarts": 0,
+    "memory": 52428800,
+    "cpu": 2.5,
+    "formatted": {
+      "uptime": "1h 0m 0s",
+      "memory": "50 MB"
+    }
+  },
+  "health": {
+    "status": "healthy",
+    "database": "connected"
+  }
+}
+```
+
+### PM2 Monitoring
+
+**View application status:**
+
+```bash
+pm2 status
+```
+
+**Real-time monitoring dashboard:**
+
+```bash
+pm2 monit
+```
+
+This shows:
+
+- CPU usage
+- Memory usage
+- Logs
+- Process restarts
+
+**View logs:**
+
+```bash
+# All logs
+pm2 logs cs2-price-tracker
+
+# Last 50 lines
+pm2 logs cs2-price-tracker --lines 50
+
+# Follow logs (real-time)
+pm2 logs cs2-price-tracker --lines 0
+
+# Error logs only
+pm2 logs cs2-price-tracker --err
+
+# Output logs only
+pm2 logs cs2-price-tracker --out
+```
+
+**View detailed process information:**
+
+```bash
+pm2 show cs2-price-tracker
+```
+
+**View process metrics:**
+
+```bash
+pm2 describe cs2-price-tracker
+```
+
+### System Resource Monitoring
+
+**CPU and Memory (htop - if installed):**
+
+```bash
+# Install htop (if not already installed)
+sudo apt-get install htop
+
+# Run htop
+htop
+```
+
+**CPU and Memory (top - built-in):**
+
+```bash
+top
+```
+
+Press `q` to quit.
+
+**Memory usage:**
+
+```bash
+free -h
+```
+
+**Disk usage:**
+
+```bash
+df -h
+```
+
+**CPU temperature (Raspberry Pi):**
+
+```bash
+vcgencmd measure_temp
+```
+
+**System load:**
+
+```bash
+uptime
+```
+
+**Network connections:**
+
+```bash
+# Check if port 3001 is listening
+sudo netstat -tlnp | grep 3001
+
+# Or using ss
+ss -tlnp | grep 3001
+```
+
+### Service Status Monitoring
+
+**Check Cloudflare Tunnel status:**
+
+```bash
+sudo systemctl status cloudflared
+```
+
+**Check all services:**
+
+```bash
+sudo systemctl list-units --type=service --state=running
+```
+
+**Check service logs:**
+
+```bash
+# Cloudflare Tunnel logs
+sudo journalctl -u cloudflared -n 50 --no-pager
+
+# System logs
+sudo journalctl -n 50 --no-pager
+```
+
+### Automated Monitoring
+
+**Set up a cron job to check system status:**
+
+```bash
+# Edit crontab
+crontab -e
+
+# Add this line to check system status every hour and log to file
+0 * * * * /home/thakur-pi/cs2-price-tracker/monitor-pi.sh >> /home/thakur-pi/cs2-price-tracker/logs/system-monitor.log 2>&1
+```
+
+**Create a monitoring script that sends alerts:**
+
+You can create a script that checks system health and sends alerts via Discord webhook if issues are detected (high CPU, low memory, service down, etc.).
+
 ### View Logs
 
 ```bash
+# Application logs
 pm2 logs cs2-price-tracker
+
+# Log files
+tail -f logs/pm2-out.log
+tail -f logs/pm2-error.log
+
+# System logs
+sudo journalctl -f
 ```
 
 ### Restart Application

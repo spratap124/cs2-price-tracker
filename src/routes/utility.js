@@ -1,5 +1,7 @@
 import express from "express";
 import axios from "axios";
+import os from "os";
+import mongoose from "mongoose";
 import { getSkinImageUrl } from "../steam/steam.js";
 
 const router = express.Router();
@@ -226,5 +228,143 @@ router.get("/search-skins", async (req, res) => {
     }
   }
 });
+
+// System Status
+// GET /system-status
+router.get("/system-status", async (req, res) => {
+  try {
+    // Get system information
+    const systemInfo = {
+      hostname: os.hostname(),
+      platform: os.platform(),
+      arch: os.arch(),
+      nodeVersion: process.version,
+      uptime: {
+        system: Math.floor(os.uptime()),
+        process: Math.floor(process.uptime()),
+        formatted: {
+          system: formatUptime(os.uptime()),
+          process: formatUptime(process.uptime())
+        }
+      },
+      memory: {
+        total: os.totalmem(),
+        free: os.freemem(),
+        used: os.totalmem() - os.freemem(),
+        usagePercent: ((os.totalmem() - os.freemem()) / os.totalmem() * 100).toFixed(2),
+        formatted: {
+          total: formatBytes(os.totalmem()),
+          free: formatBytes(os.freemem()),
+          used: formatBytes(os.totalmem() - os.freemem())
+        }
+      },
+      cpu: {
+        cores: os.cpus().length,
+        model: os.cpus()[0]?.model || "Unknown",
+        loadAverage: os.loadavg()
+      },
+      network: {
+        interfaces: Object.keys(os.networkInterfaces()).reduce((acc, name) => {
+          const interfaces = os.networkInterfaces()[name];
+          if (interfaces) {
+            acc[name] = interfaces
+              .filter(iface => iface.family === "IPv4")
+              .map(iface => ({
+                address: iface.address,
+                netmask: iface.netmask,
+                mac: iface.mac
+              }));
+          }
+          return acc;
+        }, {})
+      },
+      process: {
+        pid: process.pid,
+        memoryUsage: {
+          rss: process.memoryUsage().rss,
+          heapTotal: process.memoryUsage().heapTotal,
+          heapUsed: process.memoryUsage().heapUsed,
+          external: process.memoryUsage().external,
+          formatted: {
+            rss: formatBytes(process.memoryUsage().rss),
+            heapTotal: formatBytes(process.memoryUsage().heapTotal),
+            heapUsed: formatBytes(process.memoryUsage().heapUsed),
+            external: formatBytes(process.memoryUsage().external)
+          }
+        }
+      },
+      timestamp: new Date().toISOString()
+    };
+
+    // Try to get PM2 status if available
+    let pm2Status = null;
+    try {
+      const { execSync } = await import("child_process");
+      const pm2List = execSync("pm2 jlist", { encoding: "utf8", timeout: 2000 });
+      const pm2Processes = JSON.parse(pm2List);
+      const appProcess = pm2Processes.find(p => p.name === "cs2-price-tracker");
+      
+      if (appProcess) {
+        pm2Status = {
+          name: appProcess.name,
+          status: appProcess.pm2_env?.status || "unknown",
+          uptime: appProcess.pm2_env?.pm_uptime || 0,
+          restarts: appProcess.pm2_env?.restart_time || 0,
+          memory: appProcess.monit?.memory || 0,
+          cpu: appProcess.monit?.cpu || 0,
+          formatted: {
+            uptime: formatUptime((Date.now() - (appProcess.pm2_env?.pm_uptime || 0)) / 1000),
+            memory: formatBytes(appProcess.monit?.memory || 0)
+          }
+        };
+      }
+    } catch (err) {
+      // PM2 not available or error - that's okay
+      pm2Status = { error: "PM2 status unavailable" };
+    }
+
+    res.json({
+      system: systemInfo,
+      application: pm2Status,
+      health: {
+        status: "healthy",
+        database: mongoose.connection.readyState === 1 ? "connected" : "disconnected"
+      }
+    });
+  } catch (err) {
+    console.error("Error fetching system status:", err);
+    res.status(500);
+    res.json({
+      error: "Internal server error",
+      message: err.message
+    });
+  }
+});
+
+// Helper functions
+function formatBytes(bytes) {
+  if (bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
+}
+
+function formatUptime(seconds) {
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  
+  if (days > 0) {
+    return `${days}d ${hours}h ${minutes}m ${secs}s`;
+  } else if (hours > 0) {
+    return `${hours}h ${minutes}m ${secs}s`;
+  } else if (minutes > 0) {
+    return `${minutes}m ${secs}s`;
+  } else {
+    return `${secs}s`;
+  }
+}
 
 export default router;
