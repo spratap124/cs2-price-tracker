@@ -98,21 +98,20 @@ export default function startCron() {
           // Handle BUY interest
           if (interest === "buy" || interest === "both") {
             if (item.targetDown != null) {
-              // Price dropped below targetDown - buying opportunity (green down arrow)
-              if (
-                (prevPrice != null && prevPrice > item.targetDown && price <= item.targetDown) ||
-                (prevPrice == null && price <= item.targetDown) ||
-                (prevPrice != null && price <= item.targetDown && prevPrice <= item.targetDown)
-              ) {
+              // Price is below targetDown - buying opportunity (green down arrow)
+              // Alert immediately if price is below targetDown and:
+              // 1. No alert sent yet, OR
+              // 2. Price continues to drop (price < lastDownAlertPrice)
+              if (price <= item.targetDown) {
                 if (
                   !item.downAlertSent ||
                   item.lastDownAlertPrice == null ||
                   price < item.lastDownAlertPrice
                 ) {
                   const title =
-                    prevPrice == null
-                      ? `${item.skinName} is below ${item.targetDown}`
-                      : `${item.skinName} dropped below ${item.targetDown}`;
+                    prevPrice == null || (prevPrice != null && prevPrice > item.targetDown)
+                      ? `${item.skinName} dropped below ${item.targetDown}`
+                      : `${item.skinName} is below ${item.targetDown} (price dropped further)`;
                   const message =
                     prevPrice == null
                       ? `Current price: ${price}`
@@ -166,21 +165,20 @@ export default function startCron() {
           // Handle SELL interest
           if (interest === "sell" || interest === "both") {
             if (item.targetUp != null) {
-              // Price rose above targetUp - selling opportunity (green up arrow)
-              if (
-                (prevPrice != null && prevPrice < item.targetUp && price >= item.targetUp) ||
-                (prevPrice == null && price >= item.targetUp) ||
-                (prevPrice != null && price >= item.targetUp && prevPrice >= item.targetUp)
-              ) {
+              // Price is above targetUp - selling opportunity (green up arrow)
+              // Alert immediately if price is above targetUp and:
+              // 1. No alert sent yet, OR
+              // 2. Price continues to rise (price > lastUpAlertPrice)
+              if (price >= item.targetUp) {
                 if (
                   !item.upAlertSent ||
                   item.lastUpAlertPrice == null ||
                   price > item.lastUpAlertPrice
                 ) {
                   const title =
-                    prevPrice == null
-                      ? `${item.skinName} is above ${item.targetUp}`
-                      : `${item.skinName} rose above ${item.targetUp}`;
+                    prevPrice == null || (prevPrice != null && prevPrice < item.targetUp)
+                      ? `${item.skinName} rose above ${item.targetUp}`
+                      : `${item.skinName} is above ${item.targetUp} (price rose further)`;
                   const message =
                     prevPrice == null
                       ? `Current price: ${price}`

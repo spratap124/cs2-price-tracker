@@ -1527,6 +1527,33 @@ cat .env.production | grep MONGODB_URI
 node -e "require('mongoose').connect(process.env.MONGODB_URI).then(() => console.log('Connected')).catch(e => console.error(e))"
 ```
 
+### SSH Terminal Performance Issues
+
+**Problem:** SSH terminal is very slow when connecting to Raspberry Pi
+
+**Quick Fix (Most Common):**
+
+```bash
+# On your Raspberry Pi, edit SSH config
+sudo nano /etc/ssh/sshd_config
+
+# Add or modify these lines:
+UseDNS no
+GSSAPIAuthentication no
+
+# Save and restart SSH
+sudo systemctl restart ssh
+```
+
+**Or use the diagnostic script:**
+
+```bash
+# On your Raspberry Pi
+./fix-ssh-performance.sh
+```
+
+**For detailed troubleshooting, see:** [SSH_TROUBLESHOOTING.md](./SSH_TROUBLESHOOTING.md)
+
 ### Performance Issues on Raspberry Pi 3
 
 **Problem:** Application is slow or crashes due to memory
