@@ -1,5 +1,6 @@
 import axios from "axios";
 
+const APP_ID = 730;
 const APPID = 730; // CS:GO / CS2 appid on Steam
 const CURRENCY = process.env.CURRENCY || "24"; // default INR
 const USER_AGENT = process.env.USER_AGENT || "PriceTracker/1.0";
@@ -83,195 +84,6 @@ function resetCooldown() {
 }
 
 /**
- * Returns numeric price in your currency (number), or null if not available
- * Includes retry logic with exponential backoff for rate limiting
- */
-export async function getSkinPrice(marketHashName, useCache = true) {
-  // Check cache first
-  if (useCache) {
-    const cached = priceCache.get(marketHashName);
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-      if (process.env.DEBUG_STEAM === "true") {
-        console.log(`[Steam API] Using cached price for "${marketHashName}": ${cached.price}`);
-      }
-      return cached.price;
-    }
-  }
-
-  const url = `https://steamcommunity.com/market/priceoverview/?appid=${APPID}&currency=${CURRENCY}&market_hash_name=${encodeURIComponent(
-    marketHashName
-  )}`;
-
-  // Retry logic with exponential backoff
-  const maxRetries = 3;
-  let lastError = null;
-
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      // Wait for rate limit before each request
-      await waitForRateLimit();
-
-      const res = await axios.get(url, {
-        headers: {
-          "User-Agent": USER_AGENT,
-          Accept: "application/json",
-          "Accept-Language": "en-US,en;q=0.9"
-        },
-        timeout: 10000, // 10 second timeout
-        validateStatus: status => status < 500 // Don't throw on 429, handle it manually
-      });
-
-      // Handle rate limiting (429)
-      if (res.status === 429) {
-        // Set cooldown period
-        handle429Error();
-
-        // Use retry-after header if available, otherwise use exponential backoff
-        const retryAfter = res.headers["retry-after"]
-          ? parseInt(res.headers["retry-after"]) * 1000
-          : Math.pow(2, attempt) * 10000; // Exponential backoff: 20s, 40s, 80s (more conservative)
-
-        // Ensure we wait at least as long as the cooldown period
-        const waitTime = Math.max(retryAfter, cooldownUntil - Date.now());
-
-        if (attempt < maxRetries) {
-          console.warn(
-            `[Steam API] Rate limited (429) for "${marketHashName}". ` +
-              `Attempt ${attempt}/${maxRetries}. Waiting ${Math.ceil(waitTime / 1000)}s before retry...`
-          );
-          await new Promise(resolve => setTimeout(resolve, waitTime));
-          // Update lastRequestTime to account for the wait
-          lastRequestTime = Date.now();
-          continue; // Retry
-        } else {
-          throw new Error(`Rate limited after ${maxRetries} attempts`);
-        }
-      }
-
-      // Handle other errors
-      if (res.status !== 200) {
-        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-      }
-
-      if (!res.data || Object.keys(res.data).length === 0) return null;
-
-      // res.data.lowest_price is a string like "₹ 2,500" or "$2.50" or "₹ 2,970.50"
-      const priceStr = res.data.lowest_price || res.data.median_price || null;
-      if (!priceStr) return null;
-
-      // Debug logging (can be enabled via DEBUG_STEAM env var)
-      if (process.env.DEBUG_STEAM === "true") {
-        console.log(`[Steam API] Raw price string for "${marketHashName}":`, priceStr);
-      }
-
-      // Extract all digits, commas, and dots
-      const replaced = priceStr.replace(/[^0-9.,]/g, "");
-      const numeric = replaced.trim();
-      if (!numeric) return null;
-
-      if (process.env.DEBUG_STEAM === "true") {
-        console.log(`[Steam API] Extracted numeric:`, numeric);
-      }
-
-      // Handle different price formats:
-      // - "2,970" -> 2970 (comma is thousands separator)
-      // - "2,970.50" -> 2970.50 (comma thousands, dot decimal)
-      // - "29.70" -> 29.70 (dot is decimal, no thousands)
-      // - "2970" -> 2970 (no separators)
-
-      let cleaned = numeric;
-
-      // If both comma and dot exist: comma is thousands separator, dot is decimal
-      if (cleaned.includes(",") && cleaned.includes(".")) {
-        // Remove commas (thousands separators), keep dot (decimal)
-        cleaned = cleaned.replace(/,/g, "");
-      }
-      // If only comma exists: could be thousands separator (e.g., "2,970") or decimal (rare, but possible)
-      // For INR, comma is typically thousands separator, so remove it
-      else if (cleaned.includes(",")) {
-        // Check if it's likely a thousands separator (comma appears before last 3 digits)
-        // e.g., "2,970" -> remove comma
-        // e.g., "29,70" -> this is unusual, but treat comma as thousands separator
-        cleaned = cleaned.replace(/,/g, "");
-      }
-      // If only dot exists: it's a decimal separator, keep it
-      // No action needed, dot stays
-
-      const value = Number(cleaned);
-      if (Number.isNaN(value) || value <= 0) return null;
-
-      // Cache the result
-      if (useCache) {
-        priceCache.set(marketHashName, {
-          price: value,
-          timestamp: Date.now()
-        });
-      }
-
-      // Success - reset cooldown
-      resetCooldown();
-
-      if (process.env.DEBUG_STEAM === "true") {
-        console.log(`[Steam API] Parsed value:`, value);
-      }
-
-      return value;
-    } catch (err) {
-      lastError = err;
-
-      // Handle axios errors
-      if (err.response) {
-        const status = err.response.status;
-
-        if (status === 429) {
-          // Set cooldown period
-          handle429Error();
-
-          const retryAfter = err.response.headers["retry-after"]
-            ? parseInt(err.response.headers["retry-after"]) * 1000
-            : Math.pow(2, attempt) * 10000; // More conservative: 20s, 40s, 80s
-
-          // Ensure we wait at least as long as the cooldown period
-          const waitTime = Math.max(retryAfter, cooldownUntil - Date.now());
-
-          if (attempt < maxRetries) {
-            console.warn(
-              `[Steam API] Rate limited (429) for "${marketHashName}". ` +
-                `Attempt ${attempt}/${maxRetries}. Waiting ${Math.ceil(waitTime / 1000)}s before retry...`
-            );
-            await new Promise(resolve => setTimeout(resolve, waitTime));
-            // Update lastRequestTime to account for the wait
-            lastRequestTime = Date.now();
-            continue; // Retry
-          }
-        } else if (status >= 500 && attempt < maxRetries) {
-          // Retry on server errors
-          const waitTime = Math.pow(2, attempt) * 2000;
-          console.warn(
-            `[Steam API] Server error (${status}) for "${marketHashName}". ` +
-              `Attempt ${attempt}/${maxRetries}. Waiting ${waitTime / 1000}s before retry...`
-          );
-          await new Promise(resolve => setTimeout(resolve, waitTime));
-          continue;
-        }
-      }
-
-      // If we're here and it's the last attempt, throw the error
-      if (attempt === maxRetries) {
-        console.error(
-          `[Steam API] Failed to get price for "${marketHashName}" after ${maxRetries} attempts:`,
-          err.message
-        );
-        throw err;
-      }
-    }
-  }
-
-  // Should not reach here, but just in case
-  throw lastError || new Error(`Failed to get price for "${marketHashName}"`);
-}
-
-/**
  * Clear the price cache (useful for testing or forcing fresh data)
  */
 export function clearPriceCache() {
@@ -317,6 +129,50 @@ export async function getSkinImageUrl(marketHashName) {
     if (process.env.DEBUG_STEAM === "true") {
       console.error(`[Steam API] Error fetching image for "${marketHashName}":`, err.message);
     }
+    return null;
+  }
+}
+
+function parseSteamPrice(priceStr) {
+  if (!priceStr || typeof priceStr !== "string") return null;
+
+  // Remove currency symbol, spaces, NBSP, commas
+  const normalized = priceStr.replace(/[₹,\s\u00A0]/g, "").trim();
+
+  const value = Number(normalized);
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+export async function getSkinPrice(skinName) {
+  try {
+    const marketHashName = encodeURIComponent(skinName);
+
+    const url = `https://steamcommunity.com/market/priceoverview/?appid=730&currency=24&market_hash_name=${marketHashName}`;
+
+    const res = await axios.get(url, {
+      timeout: 10000,
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
+        Accept: "application/json,text/plain,*/*",
+        "Accept-Language": "en-IN,en;q=0.9",
+        Referer: "https://steamcommunity.com/market/",
+        Cookie: "steamCountry=IN|INR"
+      }
+    });
+
+    if (!res.data?.success) return null;
+
+    const priceStr = res.data.lowest_price || res.data.median_price || null;
+
+    return parseSteamPrice(priceStr);
+  } catch (err) {
+    if (err.response?.status === 429) {
+      console.warn(`[${new Date().toISOString()}] ⚠ Steam 429 for ${skinName}`);
+    } else {
+      console.error(`[${new Date().toISOString()}] Steam error for ${skinName}:`, err.message);
+    }
+
     return null;
   }
 }

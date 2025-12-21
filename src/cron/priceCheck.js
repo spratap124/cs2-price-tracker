@@ -4,7 +4,12 @@ import User from "../models/user.js";
 import { getSkinPrice } from "../steam/steam.js";
 import { sendAlert } from "../alert/alert.js";
 
-// Retry logic for Discord webhook calls
+const REQUEST_DELAY_MS = Number(process.env.STEAM_API_MIN_INTERVAL_MS || 10000);
+const sleep = ms => new Promise(res => setTimeout(res, ms));
+
+/* --------------------------------------------------
+   Alert retry (UNCHANGED)
+-------------------------------------------------- */
 async function sendAlertWithRetry(
   title,
   message,
@@ -30,244 +35,146 @@ async function sendAlertWithRetry(
         interest,
         imageUrl
       );
-      return; // Success
+      return;
     } catch (err) {
       if (attempt === maxRetries) {
-        console.error(
-          `Failed to send alert after ${maxRetries} attempts for ${skinName} to user webhook`
-        );
+        console.error(`Alert failed after ${maxRetries} attempts: ${skinName}`);
         throw err;
       }
-      // Wait before retry (exponential backoff)
-      await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+      await sleep(1000 * attempt);
     }
   }
 }
 
-export default function startCron() {
-  const intervalMin = Number(process.env.CHECK_INTERVAL_MINUTES || 5);
-  // run every `intervalMin` minutes
-  const cronExpr = `*/${Math.max(1, intervalMin)} * * * *`;
+/* ==================================================
+   🔁 MAIN PRICE CHECK LOGIC (EXTRACTED)
+================================================== */
+async function runPriceCheck() {
+  console.log(new Date().toISOString(), "⏳ Price check started");
 
-  cron.schedule(cronExpr, async () => {
-    console.log(new Date().toISOString(), "Running price check...");
+  const trackers = await Tracker.find({});
+  if (trackers.length === 0) {
+    console.log("No trackers found");
+    return;
+  }
 
-    // Get all users with their webhooks
-    const users = await User.find({});
+  const uniqueSkins = [...new Set(trackers.map(t => t.skinName))];
+  console.log(`Fetching prices for ${uniqueSkins.length} unique skins`);
 
-    // Process trackers for each user
-    for (const user of users) {
-      const trackers = await Tracker.find({ userId: user.userId });
+  const priceCache = new Map();
 
-      if (trackers.length === 0) {
-        continue; // Skip users with no trackers
-      }
+  for (const skinName of uniqueSkins) {
+    try {
+      console.log(`[${new Date().toISOString()}] Steam request → ${skinName}`);
+      const price = await getSkinPrice(skinName);
+      priceCache.set(skinName, price);
+      console.log(`✔ ${skinName}: ${price}`);
+    } catch (err) {
+      console.error(`✖ Failed price fetch: ${skinName}`);
+      priceCache.set(skinName, null);
+    }
 
-      console.log(`Processing ${trackers.length} trackers for user ${user.userId}`);
+    await sleep(REQUEST_DELAY_MS); // HARD delay
+  }
 
-      for (let i = 0; i < trackers.length; i++) {
-        const item = trackers[i];
-        try {
-          const prevPrice = item.lastKnownPrice != null ? item.lastKnownPrice : null;
+  for (const item of trackers) {
+    const price = priceCache.get(item.skinName);
+    if (price == null) continue;
 
-          // Rate limiting is now handled in steam.js with built-in retry logic
-          const price = await getSkinPrice(item.skinName);
-          if (price === null) {
-            console.log(`No price found for ${item.skinName}`);
-            continue;
-          }
+    const prevPrice = item.lastKnownPrice ?? null;
+    item.lastKnownPrice = price;
 
-          // update last known price
-          item.lastKnownPrice = price;
+    item.priceHistory ??= [];
+    item.priceHistory.push({ price, timestamp: new Date() });
+    if (item.priceHistory.length > 10) {
+      item.priceHistory = item.priceHistory.slice(-10);
+    }
 
-          // Add to price history (keep last 10)
-          if (!item.priceHistory) {
-            item.priceHistory = [];
-          }
-          item.priceHistory.push({
-            price: price,
-            timestamp: new Date()
-          });
-          // Keep only the last 10 prices
-          if (item.priceHistory.length > 10) {
-            item.priceHistory = item.priceHistory.slice(-10);
-          }
+    const interest = item.interest || "buy";
+    const user = await User.findOne({ userId: item.userId });
+    if (!user?.discordWebhook) continue;
 
-          const interest = item.interest || "buy"; // Default to "buy" for backward compatibility
-
-          // Handle BUY interest
-          if (interest === "buy" || interest === "both") {
-            if (item.targetDown != null) {
-              // Price is below targetDown - buying opportunity (green down arrow)
-              // Alert immediately if price is below targetDown and:
-              // 1. No alert sent yet, OR
-              // 2. Price continues to drop (price < lastDownAlertPrice)
-              if (price <= item.targetDown) {
-                if (
-                  !item.downAlertSent ||
-                  item.lastDownAlertPrice == null ||
-                  price < item.lastDownAlertPrice
-                ) {
-                  const title =
-                    prevPrice == null || (prevPrice != null && prevPrice > item.targetDown)
-                      ? `${item.skinName} dropped below ${item.targetDown}`
-                      : `${item.skinName} is below ${item.targetDown} (price dropped further)`;
-                  const message =
-                    prevPrice == null
-                      ? `Current price: ${price}`
-                      : `Price: ${price} (was ${prevPrice})`;
-
-                  try {
-                    await sendAlertWithRetry(
-                      title,
-                      message,
-                      item.skinName,
-                      "buy",
-                      user.discordWebhook,
-                      price,
-                      item.targetDown,
-                      interest,
-                      item.imageUrl
-                    );
-                    item.downAlertSent = true;
-                    item.lastDownAlertPrice = price;
-                  } catch (err) {
-                    console.error(
-                      `Failed to send buy alert for ${item.skinName} to user ${user.userId}`
-                    );
-                  }
-                }
-              }
-
-              // Price rose above targetDown (was below) - bad for buying (red up arrow)
-              if (prevPrice != null && prevPrice <= item.targetDown && price > item.targetDown) {
-                try {
-                  await sendAlertWithRetry(
-                    `${item.skinName} rose above ${item.targetDown}`,
-                    `Price: ${price} (was ${prevPrice}) - Price moving away from buy target`,
-                    item.skinName,
-                    "buy-bad",
-                    user.discordWebhook,
-                    price,
-                    item.targetDown,
-                    interest,
-                    item.imageUrl
-                  );
-                } catch (err) {
-                  console.error(
-                    `Failed to send buy-bad alert for ${item.skinName} to user ${user.userId}`
-                  );
-                }
-              }
-            }
-          }
-
-          // Handle SELL interest
-          if (interest === "sell" || interest === "both") {
-            if (item.targetUp != null) {
-              // Price is above targetUp - selling opportunity (green up arrow)
-              // Alert immediately if price is above targetUp and:
-              // 1. No alert sent yet, OR
-              // 2. Price continues to rise (price > lastUpAlertPrice)
-              if (price >= item.targetUp) {
-                if (
-                  !item.upAlertSent ||
-                  item.lastUpAlertPrice == null ||
-                  price > item.lastUpAlertPrice
-                ) {
-                  const title =
-                    prevPrice == null || (prevPrice != null && prevPrice < item.targetUp)
-                      ? `${item.skinName} rose above ${item.targetUp}`
-                      : `${item.skinName} is above ${item.targetUp} (price rose further)`;
-                  const message =
-                    prevPrice == null
-                      ? `Current price: ${price}`
-                      : `Price: ${price} (was ${prevPrice})`;
-
-                  try {
-                    await sendAlertWithRetry(
-                      title,
-                      message,
-                      item.skinName,
-                      "sell",
-                      user.discordWebhook,
-                      price,
-                      item.targetUp,
-                      interest,
-                      item.imageUrl
-                    );
-                    item.upAlertSent = true;
-                    item.lastUpAlertPrice = price;
-                  } catch (err) {
-                    console.error(
-                      `Failed to send sell alert for ${item.skinName} to user ${user.userId}`
-                    );
-                  }
-                }
-              }
-
-              // Price dropped below targetUp (was above) - bad for selling (red down arrow)
-              if (prevPrice != null && prevPrice >= item.targetUp && price < item.targetUp) {
-                try {
-                  await sendAlertWithRetry(
-                    `${item.skinName} dropped below ${item.targetUp}`,
-                    `Price: ${price} (was ${prevPrice}) - Price moving away from sell target`,
-                    item.skinName,
-                    "sell-bad",
-                    user.discordWebhook,
-                    price,
-                    item.targetUp,
-                    interest,
-                    item.imageUrl
-                  );
-                } catch (err) {
-                  console.error(
-                    `Failed to send sell-bad alert for ${item.skinName} to user ${user.userId}`
-                  );
-                }
-              }
-            }
-          }
-
-          // Auto reset logic: if price moves back inside range clear flags
-          // This allows future alerts to be sent when price crosses thresholds again
-          if (interest === "buy" || interest === "both") {
-            if (item.targetDown != null && price > item.targetDown && item.downAlertSent) {
-              item.downAlertSent = false;
-              item.lastDownAlertPrice = null;
-            }
-          }
-
-          if (interest === "sell" || interest === "both") {
-            if (item.targetUp != null && price < item.targetUp && item.upAlertSent) {
-              item.upAlertSent = false;
-              item.lastUpAlertPrice = null;
-            }
-          }
-
-          // If both targets exist and price is between them, reset both
-          if (item.targetDown != null && item.targetUp != null) {
-            if (price > item.targetDown && price < item.targetUp) {
-              if (item.downAlertSent || item.upAlertSent) {
-                item.downAlertSent = false;
-                item.upAlertSent = false;
-                item.lastDownAlertPrice = null;
-                item.lastUpAlertPrice = null;
-              }
-            }
-          }
-
-          await item.save();
-        } catch (err) {
-          // Errors are already logged in steam.js with detailed retry information
-          // Just log a summary here
-          const errorMessage = err.message || err;
-          console.error(`Failed to process tracker for "${item.skinName}": ${errorMessage}`);
-          // Continue processing other trackers even if one fails
+    if ((interest === "buy" || interest === "both") && item.targetDown != null) {
+      if (price <= item.targetDown) {
+        if (!item.downAlertSent || price < item.lastDownAlertPrice) {
+          await sendAlertWithRetry(
+            `${item.skinName} below ${item.targetDown}`,
+            `Price: ${price}${prevPrice ? ` (was ${prevPrice})` : ""}`,
+            item.skinName,
+            "buy",
+            user.discordWebhook,
+            price,
+            item.targetDown,
+            interest,
+            item.imageUrl
+          );
+          item.downAlertSent = true;
+          item.lastDownAlertPrice = price;
         }
+      } else {
+        item.downAlertSent = false;
+        item.lastDownAlertPrice = null;
       }
     }
 
-    console.log(new Date().toISOString(), "Price check finished.");
-  });
+    if ((interest === "sell" || interest === "both") && item.targetUp != null) {
+      if (price >= item.targetUp) {
+        if (!item.upAlertSent || price > item.lastUpAlertPrice) {
+          await sendAlertWithRetry(
+            `${item.skinName} above ${item.targetUp}`,
+            `Price: ${price}${prevPrice ? ` (was ${prevPrice})` : ""}`,
+            item.skinName,
+            "sell",
+            user.discordWebhook,
+            price,
+            item.targetUp,
+            interest,
+            item.imageUrl
+          );
+          item.upAlertSent = true;
+          item.lastUpAlertPrice = price;
+        }
+      } else {
+        item.upAlertSent = false;
+        item.lastUpAlertPrice = null;
+      }
+    }
+
+    await item.save();
+  }
+
+  console.log(new Date().toISOString(), "✅ Price check finished");
+}
+
+/* ==================================================
+   🚀 CRON STARTER
+================================================== */
+export default function startCron() {
+  const intervalMin = Math.max(1, Number(process.env.CHECK_INTERVAL_MINUTES || 60));
+
+  let isRunning = false;
+
+  const safeRun = async () => {
+    if (isRunning) {
+      console.log("⚠ Price check already running, skipping");
+      return;
+    }
+    isRunning = true;
+    try {
+      await runPriceCheck();
+    } catch (err) {
+      console.error("Price check failed:", err);
+    } finally {
+      isRunning = false;
+    }
+  };
+
+  /* 1️⃣ RUN IMMEDIATELY ON SERVER START */
+  safeRun();
+
+  /* 2️⃣ RUN EVERY N MINUTES AFTERWARD */
+  const cronExpr = `*/${intervalMin} * * * *`;
+  cron.schedule(cronExpr, safeRun);
+
+  console.log(`🕒 Price check scheduled every ${intervalMin} minutes`);
 }
